@@ -1,0 +1,41 @@
+id: Q1
+labels:
+  tr:
+    text: BİLECİK
+    references: [R1]
+descriptions:
+  en:
+    text: A city in Türkiye.
+    references: [R1]
+entity_types:
+  - value: T1
+    references: [R1]
+statements:
+  - id: S1
+    property: P1
+    value:
+      type: integer
+      value: 228334
+    qualifiers:
+      - property: P2
+        value:
+          type: date
+          value: "2023-12-31"
+    references: [R1]
+  - id: S2
+    property: P1
+    value:
+      type: integer
+      value: 219427
+    qualifiers:
+      - property: P2
+        value:
+          type: date
+          value: "2022-12-31"
+    references: [R1]
+  - id: S3
+    property: P3
+    value:
+      type: entity
+      value: Q2
+    references: [R1]

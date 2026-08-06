@@ -1,0 +1,20 @@
+[package]
+name = "knowledge-base-validation"
+description = "Validation for the file-based knowledge base"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+knowledge-base-models.workspace = true
+language-tags.workspace = true
+pulldown-cmark.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,7 @@
+id: P2
+labels:
+  en:
+    text: point in time
+    references: [R1]
+subject_types: [T1]
+value_type: date

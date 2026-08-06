@@ -1,0 +1,8 @@
+id: P1
+labels:
+  en:
+    text: population
+    references: [R1]
+subject_types: [T1]
+value_type: integer
+allowed_qualifiers: [P2]

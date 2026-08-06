@@ -1,0 +1,9 @@
+id: Q2
+labels:
+  en:
+    text: Türkiye
+    references: [R1]
+entity_types:
+  - value: T2
+    references: [R1]
+statements: []

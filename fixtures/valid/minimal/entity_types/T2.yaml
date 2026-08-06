@@ -1,0 +1,5 @@
+id: T2
+labels:
+  en:
+    text: Country
+    references: [R1]

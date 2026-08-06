@@ -1,0 +1,9 @@
+id: T1
+labels:
+  en:
+    text: City
+    references: [R1]
+descriptions:
+  en:
+    text: An incorporated urban settlement.
+    references: [R1]

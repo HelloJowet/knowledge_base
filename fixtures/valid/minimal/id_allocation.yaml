@@ -1,0 +1,6 @@
+version: 1
+next:
+  entity: 3
+  property: 4
+  reference: 2
+  entity_type: 3

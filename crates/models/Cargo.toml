@@ -1,0 +1,13 @@
+[package]
+name = "knowledge-base-models"
+description = "Data models for the file-based knowledge base"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_yaml.workspace = true

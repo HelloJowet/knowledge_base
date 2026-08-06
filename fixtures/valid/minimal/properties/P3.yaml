@@ -1,0 +1,9 @@
+id: P3
+labels:
+  en:
+    text: country
+    references: [R1]
+subject_types: [T1]
+value_type: entity
+target_types: [T2]
+cardinality: one
