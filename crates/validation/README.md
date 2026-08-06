@@ -9,9 +9,15 @@ let diagnostics = validate_repository("/path/to/knowledge-base");
 for diagnostic in &diagnostics {
     eprintln!("{diagnostic}");
 }
-assert!(diagnostics.is_empty());
 ```
 
-An empty `Vec<Diagnostic>` means the repository is valid. Diagnostics are structured and returned in deterministic order.
+The validator checks:
 
-See the [validation rules](../../docs/validation.md) for the checks performed.
+- required directories, file names, YAML syntax, and the [data model](../../docs/data-model.md);
+- identifier uniqueness and cross-references;
+- property applicability, value types, target types, cardinality, and qualifiers;
+- URLs, dates, timestamps, decimals, coordinates, and allocation counters;
+- required references on structured data; and
+- entity Markdown file names, footnotes, and reference links.
+
+Diagnostics include the path, line when available, validation layer, related identifier, and message. An empty list means the knowledge base is valid.

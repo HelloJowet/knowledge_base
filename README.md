@@ -1,54 +1,52 @@
-# Knowledge Base Validator
+# File-based knowledge base
 
-A read-only Rust workspace for a version-controlled, file-based knowledge base. Knowledge is stored as strict YAML records, with optional Markdown documents for sourced explanatory context.
+A simple foundation for building your own knowledge base. Structured data is stored in YAML, with optional Markdown for unstructured data attached to an entity.
 
-The validator checks file structure, identifiers, typed values, ontology rules, cross-references, provenance, allocation counters, and Markdown citations. A knowledge-base directory can have any name and can live anywhere.
+Using files instead of a database makes the knowledge base easy to inspect, edit, version with Git, and use with AI coding agents such as Codex and Claude Code. The project intentionally favors simplicity and portability.
 
-## Knowledge-base layout
+## Trade-offs
 
-The path passed to `validate` must contain:
+A file-based knowledge base becomes harder to validate, query, and update concurrently as it grows. This approach is best suited to small or moderately sized knowledge bases; larger deployments may need an index or database.
+
+## Layout
 
 ```text
-<knowledge-base-root>/
-├── entities/
+<knowledge-base>/
+├── entities/             # entities and their statements
 │   └── Q<n>.yaml
-├── entity_types/
+├── entity_types/         # entity type definitions
 │   └── T<n>.yaml
-├── properties/
+├── properties/           # property definitions
 │   └── P<n>.yaml
-├── references/
+├── references/           # sources cited by the knowledge base
 │   └── R<n>.yaml
-├── entity_context/       # optional
+├── entity_context/       # optional Markdown attached to entities
 │   └── Q<n>.md
-└── id_allocation.yaml
+└── id_allocation.yaml    # next available identifiers
 ```
 
-The four YAML directories and `id_allocation.yaml` are required. `entity_context/` is optional. Managed directories may contain only their documented file type.
+See the [data model](docs/data-model.md) for the file format. The example in [`fixtures/valid/minimal`](fixtures/valid/minimal) is a small knowledge base you can copy and adapt.
 
-See the complete specifications:
+## Validate a knowledge base
 
-- [Architecture](docs/architecture.md)
-- [Data model](docs/data-model.md)
-- [Validation rules](docs/validation.md)
-- [Deferred topics](docs/todo.md)
+The included Rust validator checks file structure, values, ontology rules, cross-references, provenance, and Markdown citations. It reports errors without changing files.
 
-The small, valid data set in [`fixtures/valid/minimal`](fixtures/valid/minimal) is also a useful starting point.
+```sh
+cargo run -p knowledge-base-cli -- validate fixtures/valid/minimal
+```
 
-## Workspace crates
+See the [`knowledge-base-validation`](crates/validation/README.md) crate for the checks performed.
 
-- [`knowledge-base-models`](crates/models/README.md): Serde models and typed identifiers
-- [`knowledge-base-validation`](crates/validation/README.md): repository validation and diagnostics
-- [`knowledge-base-cli`](crates/cli/README.md): the `knowledge-base` command
+## Development
 
-## Development checks
+The workspace contains models, validation, and CLI crates:
 
-Run the same checks used for this implementation:
+- [`knowledge-base-models`](crates/models/README.md)
+- [`knowledge-base-validation`](crates/validation/README.md)
+- [`knowledge-base-cli`](crates/cli/README.md)
 
 ```sh
 cargo fmt --check --all
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
-cargo run -p knowledge-base-cli -- validate fixtures/valid/minimal
 ```
-
-The current milestone intentionally does not include mutation or query APIs.
