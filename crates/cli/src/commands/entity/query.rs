@@ -1,4 +1,4 @@
-use super::super::{write_content, CommandError};
+use super::super::{CommandError, write_content};
 use chrono::{DateTime, NaiveDate};
 use knowledge_base_crud::{EntityFilter, KnowledgeBase};
 use knowledge_base_models::{EntityId, Property, PropertyId, Value, ValueType};

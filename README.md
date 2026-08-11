@@ -1,12 +1,12 @@
 # File-based knowledge base
 
-A simple foundation for building your own knowledge base. Structured data is stored in YAML, with optional Markdown for unstructured data attached to an entity.
+This repository provides a simple, portable foundation for a knowledge base. It stores structured data in YAML and optional free-form notes in Markdown files attached to entities.
 
-Using files instead of a database makes the knowledge base easy to inspect, edit, version with Git and use with AI coding agents such as Codex and Claude Code. The project intentionally favors simplicity and portability.
+Because the data lives in ordinary files, you can inspect and edit it directly, track it with Git, and work with AI coding agents such as Codex and Claude Code.
 
 ## Trade-offs
 
-A file-based knowledge base becomes harder to validate, query, and update concurrently as it grows. This approach is best suited to small or moderately sized knowledge bases; larger deployments may need an index or database.
+A file-based knowledge base is easiest to use at a small or medium scale. As it grows, validation, querying, and concurrent updates become harder, so you may need an index or database.
 
 ## Layout
 
@@ -44,9 +44,28 @@ knowledge-base validate
 
 See the [CLI documentation](docs/cli/README.md) for all commands and examples.
 
+## What this repository owns
+
+`knowledge-base` defines the generic repository format and common operations: validation, filesystem CRUD, resource reads, entity search and queries, relationship inspection, statement application, and reference registration.
+
+The sibling `knowledge_base_public_transport` workspace supplies public-transport rules and reports through `knowledge-base-public-transport`. The sibling `geo_lake_02` workspace retains web retrieval, source-specific reference acquisition, candidate-inventory validation, legacy migration, and route-element export through `geo-lake-knowledge-base`.
+
+## Temporary sibling integration
+
+During consolidation, the workspaces use local sibling-path dependencies instead of released packages. Consumers pin generic crates to `=0.3.0` and public-transport crates to `=0.1.0`:
+
+```text
+parent/
+├── geo_lake_02/
+├── knowledge_base/
+└── knowledge_base_public_transport/
+```
+
+Replace every sibling-path dependency with an immutable released dependency before publishing or distributing a consumer workspace independently.
+
 ## Agent skills
 
-Reusable skills teach compatible AI coding agents how to operate the CLI and author files that follow the data model. Install skills from this repository with the [skills CLI](https://www.skills.sh/docs):
+Reusable skills help compatible AI coding agents use the CLI and create files that follow the data model. Install them with the [skills CLI](https://www.skills.sh/docs):
 
 ```sh
 npx skills add HelloJowet/knowledge_base --skill knowledge-base-cli
@@ -55,7 +74,7 @@ npx skills add HelloJowet/knowledge_base --skill knowledge-base-data-model
 
 ## Development
 
-The workspace contains models, a filesystem-backed CRUD layer (currently exposing a documented subset of mutations), validation, and CLI crates:
+The workspace includes models, a filesystem-backed CRUD layer, validation, and a CLI. The CRUD crate currently exposes the documented subset of mutation operations:
 
 - [`knowledge-base-models`](crates/models/README.md)
 - [`knowledge-base-crud`](crates/crud/README.md)
