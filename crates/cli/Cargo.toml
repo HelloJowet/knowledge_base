@@ -2,9 +2,13 @@
 name = "knowledge-base-cli"
 description = "Command-line interface for a file-based knowledge base"
 readme = "README.md"
+keywords = ["knowledge-base", "yaml", "cli"]
+categories = ["command-line-utilities"]
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
 chrono.workspace = true

@@ -4,7 +4,9 @@ description = "Filesystem CRUD operations for a file-based knowledge base"
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
 fs2.workspace = true

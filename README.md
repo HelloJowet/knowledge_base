@@ -29,19 +29,24 @@ See the [data model](docs/data-model.md) for the file format. The example in [`f
 
 ## Command-line interface
 
-The `knowledge-base` executable validates, reads, queries, and updates a knowledge base. See the [CLI documentation](docs/cli/README.md) for setup, commands, and examples.
+The `knowledge-base` executable validates, reads, queries, and updates a knowledge base. Install it from crates.io with:
+
+```sh
+cargo install knowledge-base-cli
+```
+
+Set `KNOWLEDGE_BASE_PATH` to the knowledge-base directory before running commands:
+
+```sh
+export KNOWLEDGE_BASE_PATH="/absolute/path/to/knowledge-base"
+knowledge-base validate
+```
+
+See the [CLI documentation](docs/cli/README.md) for all commands and examples.
 
 ## Agent skills
 
-Reusable skills teach compatible AI coding agents how to operate the CLI and author files that follow the data model. Install both skills from this repository with the [skills CLI](https://www.skills.sh/docs):
-
-```sh
-npx skills add HelloJowet/knowledge_base \
-  --skill knowledge-base-cli \
-  --skill knowledge-base-data-model
-```
-
-Install either skill independently when only one capability is needed:
+Reusable skills teach compatible AI coding agents how to operate the CLI and author files that follow the data model. Install skills from this repository with the [skills CLI](https://www.skills.sh/docs):
 
 ```sh
 npx skills add HelloJowet/knowledge_base --skill knowledge-base-cli
