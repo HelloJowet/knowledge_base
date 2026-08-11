@@ -356,12 +356,49 @@ fn validate_references(items: &[Loaded<Reference>], report: &mut Diagnostics) {
         let reference = &item.value;
         let id = reference.id.to_string();
         validate_url(&item.path, &id, "url", &reference.url, report);
+        validate_nonempty_metadata(item, &id, "title", &reference.title, report);
+        if let Some(publisher) = &reference.publisher {
+            validate_nonempty_metadata(item, &id, "publisher", publisher, report);
+        }
+        if let Some(publication_date) = &reference.publication_date {
+            if validate_nonempty_metadata(item, &id, "publication_date", publication_date, report) && !valid_partial_date(publication_date) {
+                schema(report, item, &id, "publication_date must be a valid YYYY, YYYY-MM, or YYYY-MM-DD date");
+            }
+        }
+        if let Some(source_language) = &reference.source_language {
+            if validate_nonempty_metadata(item, &id, "source_language", source_language, report) && source_language.parse::<LanguageTag>().is_err() {
+                schema(report, item, &id, "source_language must be a well-formed BCP 47 tag");
+            }
+        }
         if let Some(url) = &reference.archive_url {
             validate_url(&item.path, &id, "archive_url", url, report);
         }
         if DateTime::parse_from_rfc3339(&reference.retrieved_at).is_err() {
             schema(report, item, &id, "retrieved_at must be an RFC 3339 timestamp");
         }
+    }
+}
+
+fn validate_nonempty_metadata<T>(item: &Loaded<T>, id: &str, field: &str, value: &str, report: &mut Diagnostics) -> bool {
+    if value.trim().is_empty() {
+        schema(report, item, id, format!("{field} must not be empty"));
+        false
+    } else {
+        true
+    }
+}
+
+fn valid_partial_date(value: &str) -> bool {
+    match value.len() {
+        4 => value.bytes().all(|byte| byte.is_ascii_digit()),
+        7 => value
+            .get(..4)
+            .zip(value.get(5..))
+            .filter(|(year, month)| year.bytes().all(|byte| byte.is_ascii_digit()) && month.bytes().all(|byte| byte.is_ascii_digit()))
+            .and_then(|(year, month)| year.parse::<i32>().ok().zip(month.parse::<u32>().ok()))
+            .is_some_and(|(year, month)| value.as_bytes().get(4) == Some(&b'-') && NaiveDate::from_ymd_opt(year, month, 1).is_some()),
+        10 => NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok(),
+        _ => false,
     }
 }
 
@@ -841,4 +878,44 @@ fn relative_path(root: &Path, path: &Path) -> PathBuf {
 
 fn line_at(source: &str, offset: usize) -> usize {
     source[..offset.min(source.len())].bytes().filter(|byte| *byte == b'\n').count() + 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Loaded, valid_partial_date, validate_references};
+    use knowledge_base_models::Reference;
+    use std::path::PathBuf;
+
+    #[test]
+    fn validates_reference_metadata() {
+        for value in ["2025", "2025-02", "2024-02-29"] {
+            assert!(valid_partial_date(value), "expected {value} to be valid");
+        }
+        for value in ["25", "2025-13", "2025-02-29", "202é-1"] {
+            assert!(!valid_partial_date(value), "expected {value} to be invalid");
+        }
+
+        let references = [Loaded {
+            path: PathBuf::from("references/R1.yaml"),
+            value: Reference {
+                id: "R1".parse().expect("valid reference identifier"),
+                url: "https://example.org".to_owned(),
+                title: " ".to_owned(),
+                publisher: Some("".to_owned()),
+                publication_date: Some("2025-02-29".to_owned()),
+                source_language: Some("en_US".to_owned()),
+                retrieved_at: "2025-01-15T10:30:00Z".to_owned(),
+                archive_url: None,
+            },
+        }];
+        let mut diagnostics = Vec::new();
+
+        validate_references(&references, &mut diagnostics);
+
+        let messages = diagnostics.iter().map(|item| item.message.as_str()).collect::<Vec<_>>();
+        assert!(messages.contains(&"title must not be empty"));
+        assert!(messages.contains(&"publisher must not be empty"));
+        assert!(messages.contains(&"publication_date must be a valid YYYY, YYYY-MM, or YYYY-MM-DD date"));
+        assert!(messages.contains(&"source_language must be a well-formed BCP 47 tag"));
+    }
 }

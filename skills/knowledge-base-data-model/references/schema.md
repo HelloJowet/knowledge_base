@@ -208,11 +208,15 @@ Store each reference in `references/R<n>.yaml`:
 ```yaml
 id: R1
 url: https://example.org/bilecik
+title: Bilecik source
+publisher: Example Publisher
+publication_date: "2025-01-14"
+source_language: en
 retrieved_at: "2025-01-15T10:30:00Z"
 archive_url: https://web.archive.org/example/bilecik
 ```
 
-Require `id`, absolute `url`, and RFC 3339 `retrieved_at`. Allow optional absolute `archive_url`.
+Require `id`, absolute `url`, nonempty `title`, and RFC 3339 `retrieved_at`. Allow optional nonempty `publisher`, `publication_date`, and `source_language`, plus optional absolute `archive_url`. When present, require `publication_date` to be a valid `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` calendar value and `source_language` to be a well-formed BCP 47 tag.
 
 Require all cited reference IDs to exist. Reject orphaned or mismatched citation links in entity Markdown.
 
