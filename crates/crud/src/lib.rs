@@ -7,7 +7,10 @@ mod property;
 mod reference;
 mod resource;
 
-pub use entity::{ApplyMode, ApplyStatementsOutcome, Entities, StatementBatch, StatementInput, StatementResult, StatementResultStatus};
+pub use entity::{
+    ApplyMode, ApplyStatementsOutcome, Entities, EntityRelationship, EntityRelationshipsPage, RelatedEntity, RelationshipDirection, StatementBatch, StatementInput,
+    StatementResult, StatementResultStatus,
+};
 pub use entity_context::EntityContexts;
 pub use entity_type::EntityTypes;
 pub use error::Error;

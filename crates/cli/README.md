@@ -18,10 +18,19 @@ Read a stored resource exactly as written:
 
 ```sh
 cargo run -p knowledge-base-cli -- entity read Q1
+cargo run -p knowledge-base-cli -- entity relationships Q1
 cargo run -p knowledge-base-cli -- entity-type read T1
 cargo run -p knowledge-base-cli -- property read P1
 cargo run -p knowledge-base-cli -- reference read R1
 cargo run -p knowledge-base-cli -- entity-context read Q1
+```
+
+`entity relationships` scans the complete entity collection and emits deterministic YAML for direct incoming, outgoing, and self-referential entity-valued statements. Results include the related entity's ID and labels plus the property and statement IDs; relationships are never followed recursively.
+
+The command defaults to `--limit 100 --offset 0`. Pagination is applied after canonical source/property/statement/target sorting. Output includes `total` and, when more results remain, `next_offset`:
+
+```sh
+cargo run --quiet --bin knowledge-base -- entity relationships Q2 --limit 25 --offset 25
 ```
 
 Apply a strict statement manifest after confirming that the dry-run outcome is `previewed` and every result is `would_add`:

@@ -141,6 +141,102 @@ fn missing_records_and_optional_context_are_read_errors() {
 }
 
 #[test]
+fn relationships_show_direct_incoming_and_outgoing_edges() {
+    let cases = [
+        (
+            "Q2",
+            "entity: Q2\noffset: 0\nlimit: 100\ntotal: 1\nrelationships:\n- direction: incoming\n  entity:\n    id: Q1\n    labels:\n      tr: BİLECİK\n  property: P3\n  statement: S3\n",
+        ),
+        (
+            "Q1",
+            "entity: Q1\noffset: 0\nlimit: 100\ntotal: 1\nrelationships:\n- direction: outgoing\n  entity:\n    id: Q2\n    labels:\n      en: Türkiye\n  property: P3\n  statement: S3\n",
+        ),
+    ];
+
+    for (id, expected) in cases {
+        let output = knowledge_base_command()
+            .args(["entity", "relationships", id])
+            .env("KNOWLEDGE_BASE_PATH", fixture())
+            .output()
+            .expect("run entity relationships");
+
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        assert_eq!(String::from_utf8(output.stdout).unwrap(), expected);
+        assert!(output.stderr.is_empty());
+    }
+}
+
+#[test]
+fn relationships_are_one_hop_and_paginated_after_canonical_sorting() {
+    let root = copied_fixture();
+    fs::write(
+        root.path().join("entities/Q3.yaml"),
+        "id: Q3\nlabels:\n  en:\n    text: District\n    references: [R1]\nentity_types:\n  - value: T1\n    references: [R1]\nstatements:\n  - id: S1\n    property: P3\n    value:\n      type: entity\n      value: Q1\n    references: [R1]\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("entities/Q4.yaml"),
+        "id: Q4\nlabels:\n  en:\n    text: Ankara\n    references: [R1]\nentity_types:\n  - value: T1\n    references: [R1]\nstatements:\n  - id: S1\n    property: P3\n    value:\n      type: entity\n      value: Q2\n    references: [R1]\n",
+    )
+    .unwrap();
+
+    let first = knowledge_base_command()
+        .args(["entity", "relationships", "Q2", "--limit", "1"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("run first relationship page");
+    assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stderr));
+    let first = String::from_utf8(first.stdout).unwrap();
+    assert!(first.contains("total: 2\nnext_offset: 1\n"));
+    assert!(first.contains("id: Q1"));
+    assert!(!first.contains("id: Q3"));
+    assert!(!first.contains("id: Q4"));
+
+    let second = knowledge_base_command()
+        .args(["entity", "relationships", "Q2", "--limit", "1", "--offset", "1"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("run second relationship page");
+    assert!(second.status.success(), "{}", String::from_utf8_lossy(&second.stderr));
+    let second = String::from_utf8(second.stdout).unwrap();
+    assert!(second.contains("total: 2\nrelationships:"));
+    assert!(!second.contains("next_offset"));
+    assert!(second.contains("id: Q4"));
+    assert!(!second.contains("id: Q3"));
+
+    let empty = knowledge_base_command()
+        .args(["entity", "relationships", "Q2", "--offset", "99"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("run empty relationship page");
+    assert!(empty.status.success(), "{}", String::from_utf8_lossy(&empty.stderr));
+    assert!(String::from_utf8(empty.stdout).unwrap().ends_with("total: 2\nrelationships: []\n"));
+}
+
+#[test]
+fn invalid_relationship_queries_fail_without_output() {
+    let malformed_root = copied_fixture();
+    fs::write(malformed_root.path().join("entities/Q2.yaml"), "not: an entity\n").unwrap();
+    let fixture_root = fixture();
+    let cases = [
+        (vec!["entity", "relationships", "Q999"], fixture_root.as_path()),
+        (vec!["entity", "relationships", "Q2"], malformed_root.path()),
+        (vec!["entity", "relationships", "Q2", "--limit", "0"], fixture_root.as_path()),
+    ];
+
+    for (arguments, root) in cases {
+        let output = knowledge_base_command()
+            .args(arguments)
+            .env("KNOWLEDGE_BASE_PATH", root)
+            .output()
+            .expect("run invalid relationship query");
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(!output.stderr.is_empty());
+    }
+}
+
+#[test]
 fn non_utf8_resources_are_read_errors() {
     let root = tempfile::tempdir().expect("temporary knowledge base");
     fs::create_dir(root.path().join("entities")).expect("create entity directory");

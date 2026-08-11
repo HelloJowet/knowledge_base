@@ -10,6 +10,7 @@ pub enum Error {
     ParseStatementBatch { path: PathBuf, source: serde_yaml::Error },
     InvalidRequest(String),
     ParseEntity { path: PathBuf, source: serde_yaml::Error },
+    InvalidRepository(String),
     Edit { path: PathBuf, message: String },
     Validation(Vec<Diagnostic>),
     Write { path: PathBuf, source: io::Error },
@@ -28,6 +29,7 @@ impl fmt::Display for Error {
             Self::ParseEntity { path, source } => {
                 write!(formatter, "cannot parse entity {}: {source}", path.display())
             }
+            Self::InvalidRepository(message) => write!(formatter, "cannot query knowledge base: {message}"),
             Self::Edit { path, message } => {
                 write!(formatter, "cannot edit resource {}: {message}", path.display())
             }
@@ -58,7 +60,7 @@ impl std::error::Error for Error {
         match self {
             Self::Read { source, .. } | Self::Write { source, .. } => Some(source),
             Self::ParseStatementBatch { source, .. } | Self::ParseEntity { source, .. } => Some(source),
-            Self::InvalidRequest(_) | Self::Edit { .. } | Self::Validation(_) | Self::ConcurrentChange(_) | Self::Commit { .. } => None,
+            Self::InvalidRequest(_) | Self::InvalidRepository(_) | Self::Edit { .. } | Self::Validation(_) | Self::ConcurrentChange(_) | Self::Commit { .. } => None,
         }
     }
 }

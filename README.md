@@ -45,6 +45,7 @@ Read individual records or an entity's Markdown context with resource-specific c
 
 ```sh
 cargo run -p knowledge-base-cli -- entity read Q1
+cargo run -p knowledge-base-cli -- entity relationships Q1
 cargo run -p knowledge-base-cli -- entity-type read T1
 cargo run -p knowledge-base-cli -- property read P1
 cargo run -p knowledge-base-cli -- reference read R1
@@ -52,6 +53,24 @@ cargo run -p knowledge-base-cli -- entity-context read Q1
 ```
 
 Read commands print files exactly as stored and do not validate the rest of the knowledge base. See the [`knowledge-base-validation`](crates/validation/README.md) crate for the checks performed by `validate`.
+
+### Query direct entity relationships
+
+Entity-valued statements create directed relationships between entities. Query both the statements stored on an entity and backlinks stored on other entities with:
+
+```sh
+cargo run --quiet --bin knowledge-base -- entity relationships Q2
+```
+
+The command scans all entity files and returns one-hop incoming, outgoing, and self-referential relationships as deterministic YAML. Each result includes the related entity's ID and labels along with the property and statement IDs. It does not follow relationships recursively.
+
+Results are paginated after sorting by source entity, property, statement, and target. The default page contains at most 100 relationships. Use `--limit` and `--offset` for other pages:
+
+```sh
+cargo run --quiet --bin knowledge-base -- entity relationships Q2 --limit 25 --offset 25
+```
+
+The response includes the total number of direct relationships and a `next_offset` when another page exists. Unlike `entity read`, this query must read and parse the complete entity collection so that incoming relationships are not missed.
 
 ### Apply statement manifests
 
