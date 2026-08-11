@@ -465,6 +465,7 @@ dependencies = [
 name = "knowledge-base-cli"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "clap",
  "knowledge-base-crud",
  "knowledge-base-models",
@@ -472,6 +473,7 @@ dependencies = [
  "serde",
  "serde_yaml",
  "tempfile",
+ "url",
 ]
 
 [[package]]

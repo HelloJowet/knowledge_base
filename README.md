@@ -45,6 +45,7 @@ Read individual records or an entity's Markdown context with resource-specific c
 
 ```sh
 cargo run -p knowledge-base-cli -- entity read Q1
+cargo run -p knowledge-base-cli -- entity query --filter P3=Q2
 cargo run -p knowledge-base-cli -- entity relationships Q1
 cargo run -p knowledge-base-cli -- entity-type read T1
 cargo run -p knowledge-base-cli -- property read P1
@@ -53,6 +54,25 @@ cargo run -p knowledge-base-cli -- entity-context read Q1
 ```
 
 Read commands print files exactly as stored and do not validate the rest of the knowledge base. See the [`knowledge-base-validation`](crates/validation/README.md) crate for the checks performed by `validate`.
+
+### Query entities by statement values
+
+Use `entity query` to find entities containing a top-level statement with a given property and value:
+
+```sh
+cargo run --quiet --bin knowledge-base -- entity query --filter P3=Q2
+```
+
+Repeat `--filter` to require every property/value pair. Filters use `P<n>=value` syntax and are interpreted using the property's declared `value_type`; the first `=` separates the property from the value, so string and URL values may contain additional equals signs. Coordinates use `latitude,longitude` syntax.
+
+```sh
+cargo run --quiet --bin knowledge-base -- \
+  entity query --filter P3=Q2 --filter P1=228334
+```
+
+Only top-level statements satisfy filters; qualifiers are ignored. Matching uses exact typed values, including repeated filters for the same property. The command sorts complete parsed entities by numeric entity ID and returns deterministic YAML with the filters, `total`, pagination metadata, and an `entities` list. It defaults to `--limit 100 --offset 0` and requires at least one filter.
+
+This query reads and parses every entity file. A malformed entity, duplicate identifier, or mismatch between a filename and its declared identifier fails the complete query rather than returning partial results.
 
 ### Query direct entity relationships
 

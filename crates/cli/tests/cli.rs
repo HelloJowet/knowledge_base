@@ -167,6 +167,74 @@ fn relationships_show_direct_incoming_and_outgoing_edges() {
 }
 
 #[test]
+fn entity_query_returns_full_entities_with_filter_and_pagination_metadata() {
+    let output = knowledge_base_command()
+        .args(["entity", "query", "--filter", "P3=Q2"])
+        .env("KNOWLEDGE_BASE_PATH", fixture())
+        .output()
+        .expect("run entity query");
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let page: serde_yaml::Value = serde_yaml::from_slice(&output.stdout).unwrap();
+    assert_eq!(page["filters"][0]["property"], "P3");
+    assert_eq!(page["filters"][0]["value"]["type"], "entity");
+    assert_eq!(page["filters"][0]["value"]["value"], "Q2");
+    assert_eq!(page["offset"], 0);
+    assert_eq!(page["limit"], 100);
+    assert_eq!(page["total"], 1);
+    assert!(page.get("next_offset").is_none());
+    assert_eq!(page["entities"][0]["id"], "Q1");
+    assert_eq!(page["entities"][0]["statements"][2]["id"], "S3");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn entity_query_ands_filters_and_returns_empty_pages() {
+    let matching = knowledge_base_command()
+        .args(["entity", "query", "--filter", "P3=Q2", "--filter", "P1=228334", "--limit", "1"])
+        .env("KNOWLEDGE_BASE_PATH", fixture())
+        .output()
+        .expect("run matching entity query");
+    assert!(matching.status.success(), "{}", String::from_utf8_lossy(&matching.stderr));
+    let matching: serde_yaml::Value = serde_yaml::from_slice(&matching.stdout).unwrap();
+    assert_eq!(matching["total"], 1);
+    assert_eq!(matching["entities"][0]["id"], "Q1");
+
+    let empty = knowledge_base_command()
+        .args(["entity", "query", "--filter", "P3=Q2", "--offset", "99"])
+        .env("KNOWLEDGE_BASE_PATH", fixture())
+        .output()
+        .expect("run empty entity query page");
+    assert!(empty.status.success(), "{}", String::from_utf8_lossy(&empty.stderr));
+    let empty: serde_yaml::Value = serde_yaml::from_slice(&empty.stdout).unwrap();
+    assert_eq!(empty["total"], 1);
+    assert_eq!(empty["entities"], serde_yaml::Value::Sequence(Vec::new()));
+}
+
+#[test]
+fn invalid_entity_queries_fail_without_output() {
+    let cases = [
+        vec!["entity", "query"],
+        vec!["entity", "query", "--filter", "P3"],
+        vec!["entity", "query", "--filter", "P3="],
+        vec!["entity", "query", "--filter", "P3=P1"],
+        vec!["entity", "query", "--filter", "P999=Q2"],
+        vec!["entity", "query", "--filter", "P3=Q2", "--limit", "0"],
+    ];
+
+    for arguments in cases {
+        let output = knowledge_base_command()
+            .args(arguments)
+            .env("KNOWLEDGE_BASE_PATH", fixture())
+            .output()
+            .expect("run invalid entity query");
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(!output.stderr.is_empty());
+    }
+}
+
+#[test]
 fn relationships_are_one_hop_and_paginated_after_canonical_sorting() {
     let root = copied_fixture();
     fs::write(

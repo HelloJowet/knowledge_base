@@ -18,12 +18,15 @@ Read a stored resource exactly as written:
 
 ```sh
 cargo run -p knowledge-base-cli -- entity read Q1
+cargo run -p knowledge-base-cli -- entity query --filter P3=Q2
 cargo run -p knowledge-base-cli -- entity relationships Q1
 cargo run -p knowledge-base-cli -- entity-type read T1
 cargo run -p knowledge-base-cli -- property read P1
 cargo run -p knowledge-base-cli -- reference read R1
 cargo run -p knowledge-base-cli -- entity-context read Q1
 ```
+
+`entity query` accepts one or more repeatable `--filter P<n>=value` options. Every filter must match a top-level statement, and values are parsed according to the corresponding property's declared type. Coordinates use `latitude,longitude`; additional `=` characters belong to string or URL values. Results contain complete parsed entities sorted by numeric ID, with `total` and optional `next_offset` pagination metadata. The command defaults to `--limit 100 --offset 0` and scans the complete entity collection.
 
 `entity relationships` scans the complete entity collection and emits deterministic YAML for direct incoming, outgoing, and self-referential entity-valued statements. Results include the related entity's ID and labels plus the property and statement IDs; relationships are never followed recursively.
 

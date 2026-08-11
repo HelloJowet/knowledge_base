@@ -46,6 +46,7 @@ pub enum Command {
 #[derive(Debug)]
 pub enum CommandError {
     Crud(Error),
+    InvalidFilter(String),
     Serialization(serde_yaml::Error),
     Output(io::Error),
 }
@@ -54,6 +55,7 @@ impl fmt::Display for CommandError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Crud(error) => error.fmt(formatter),
+            Self::InvalidFilter(message) => formatter.write_str(message),
             Self::Serialization(error) => write!(formatter, "cannot serialize command output: {error}"),
             Self::Output(error) => write!(formatter, "cannot write command output: {error}"),
         }

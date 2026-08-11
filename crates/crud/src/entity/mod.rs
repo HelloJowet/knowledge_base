@@ -1,7 +1,9 @@
+mod query;
 mod read;
 mod relationships;
 mod statement;
 
+pub use query::{EntitiesPage, EntityFilter};
 pub use relationships::{EntityRelationship, EntityRelationshipsPage, RelatedEntity, RelationshipDirection};
 pub use statement::{ApplyMode, ApplyStatementsOutcome, StatementBatch, StatementInput, StatementResult, StatementResultStatus};
 
