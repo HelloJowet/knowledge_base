@@ -106,13 +106,15 @@ Each classification and statement cites at least one reference. A qualifier requ
 
 Each statement has one value. Store multiple values as separate statements so each can have its own qualifiers and references. A statement's references support the value and its qualifiers.
 
-An image requires `url`, `attribution`, and `references`. `attribution_url` is optional:
+An image requires lossless attribution metadata: `url`, `alt`, `source_url`, `creator`, and `license`. `source_url` is the primary provenance link to the image's source or attribution page. Supplemental knowledge-base `references` are optional.
 
 ```yaml
 images:
   - url: https://example.org/bilecik.jpg
-    attribution: Example Archive, CC BY 4.0
-    attribution_url: https://example.org/bilecik-image
+    alt: Bilecik city centre
+    source_url: https://example.org/bilecik-image
+    creator: Example Archive
+    license: CC BY 4.0
     references: [R1]
 ```
 

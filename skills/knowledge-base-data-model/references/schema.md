@@ -157,12 +157,14 @@ Represent images as:
 ```yaml
 images:
   - url: https://example.org/bilecik.jpg
-    attribution: Example Archive, CC BY 4.0
-    attribution_url: https://example.org/bilecik-image
+    alt: Bilecik city centre
+    source_url: https://example.org/bilecik-image
+    creator: Example Archive
+    license: CC BY 4.0
     references: [R1]
 ```
 
-Require `url`, `attribution`, and nonempty `references`; allow optional `attribution_url`.
+Require `url`, `alt`, `source_url`, `creator`, and `license`. `source_url` is the primary provenance link to the image's source or attribution page. Allow optional supplemental `references`; when supplied, every reference ID must exist.
 
 ## Typed values
 

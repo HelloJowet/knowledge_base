@@ -137,6 +137,21 @@ pub(super) fn validate_provenance(
     }
 }
 
+pub(super) fn validate_optional_provenance(
+    path: &Path,
+    owner: &str,
+    field: &str,
+    reference_ids: &[ReferenceId],
+    references: &BTreeMap<ReferenceId, &Loaded<Reference>>,
+    diagnostics: &mut Diagnostics,
+) {
+    for reference_id in reference_ids {
+        if !references.contains_key(reference_id) {
+            diagnostics.provenance(path, None, owner, format!("{field} cites missing reference {reference_id}"));
+        }
+    }
+}
+
 pub(super) fn validate_url(path: &Path, owner: &str, field: &str, value: &str, diagnostics: &mut Diagnostics) {
     if Url::parse(value).is_err() {
         diagnostics.push(

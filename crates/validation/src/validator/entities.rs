@@ -1,5 +1,5 @@
 use super::Validator;
-use super::values::{validate_localized_map, validate_provenance, validate_url, validate_value, value_type_name};
+use super::values::{validate_localized_map, validate_optional_provenance, validate_provenance, validate_url, validate_value, value_type_name};
 use crate::diagnostic::Diagnostics;
 use crate::input::Loaded;
 use knowledge_base_models::{Cardinality, Entity, EntityId, Property, PropertyId, Value};
@@ -29,13 +29,13 @@ pub(super) fn validate(validator: &mut Validator<'_>) {
         }
         for image in &entity.images {
             validate_url(&item.path, &id, "image url", &image.url, diagnostics);
-            if let Some(url) = &image.attribution_url {
-                validate_url(&item.path, &id, "image attribution_url", url, diagnostics);
+            validate_url(&item.path, &id, "image source_url", &image.source_url, diagnostics);
+            for (field, value) in [("alt", &image.alt), ("creator", &image.creator), ("license", &image.license)] {
+                if value.trim().is_empty() {
+                    diagnostics.schema(item, &id, format!("image {field} must not be empty"));
+                }
             }
-            if image.attribution.trim().is_empty() {
-                diagnostics.schema(item, &id, "image attribution must not be empty");
-            }
-            validate_provenance(&item.path, &id, "image", &image.references, references, diagnostics);
+            validate_optional_provenance(&item.path, &id, "image", &image.references, references, diagnostics);
         }
 
         let mut statement_ids = BTreeSet::new();

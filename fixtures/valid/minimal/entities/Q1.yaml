@@ -7,6 +7,13 @@ descriptions:
   en:
     text: A city in Türkiye.
     references: [R1]
+images:
+  - url: https://example.org/bilecik.jpg
+    alt: Bilecik city centre
+    source_url: https://example.org/bilecik-image
+    creator: Example Archive
+    license: CC BY 4.0
+    references: [R1]
 entity_types:
   - value: T1
     references: [R1]

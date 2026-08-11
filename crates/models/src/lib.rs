@@ -195,9 +195,11 @@ impl Value {
 #[serde(deny_unknown_fields)]
 pub struct Image {
     pub url: String,
-    pub attribution: String,
-    #[serde(default, deserialize_with = "deserialize_optional_non_null")]
-    pub attribution_url: Option<String>,
+    pub alt: String,
+    pub source_url: String,
+    pub creator: String,
+    pub license: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub references: Vec<ReferenceId>,
 }
 
@@ -257,7 +259,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{EntityId, EntityTypeId, PropertyId, ReferenceId, StatementId};
+    use super::{EntityId, EntityTypeId, Image, PropertyId, ReferenceId, StatementId};
     use serde::de::DeserializeOwned;
 
     fn parses<T: DeserializeOwned>(value: &str) -> bool {
@@ -287,5 +289,29 @@ mod tests {
         for value in ["Q0", "Q01", "P1", "../Q1", "Q1.yaml"] {
             assert!(value.parse::<EntityId>().is_err(), "{value} unexpectedly parsed as an entity identifier");
         }
+    }
+
+    #[test]
+    fn images_use_lossless_metadata_and_optional_references() {
+        let image: Image =
+            serde_yaml::from_str("url: https://example.org/image.jpg\nalt: Example image\nsource_url: https://example.org/source\ncreator: Example creator\nlicense: CC BY 4.0\n")
+                .expect("canonical image parses");
+
+        assert!(image.references.is_empty());
+        assert!(!serde_yaml::to_string(&image).expect("image serializes").contains("references:"));
+
+        let cited: Image = serde_yaml::from_str(
+            "url: https://example.org/image.jpg\nalt: Example image\nsource_url: https://example.org/source\ncreator: Example creator\nlicense: CC BY 4.0\nreferences: [R1]\n",
+        )
+        .expect("cited canonical image parses");
+        assert_eq!(cited.references[0].as_str(), "R1");
+    }
+
+    #[test]
+    fn images_reject_legacy_attribution_fields() {
+        assert!(
+            serde_yaml::from_str::<Image>("url: https://example.org/image.jpg\nattribution: Example Archive\nattribution_url: https://example.org/source\nreferences: [R1]\n",)
+                .is_err()
+        );
     }
 }
