@@ -99,3 +99,74 @@ fn images_validate_metadata_urls_and_optional_references() {
     fs::write(&entity_path, entity.replace(image_fixture_block(), &uncited_image)).expect("entity without image references");
     assert!(validate_repository(root.path()).is_empty());
 }
+
+#[test]
+fn property_usage_restricts_statement_and_qualifier_positions() {
+    for (property, replacement, expected_message) in [
+        ("P1.yaml", "usage: qualifier", "property P1 cannot be used as a statement"),
+        ("P2.yaml", "usage: statement", "property P2 cannot be used as a qualifier"),
+    ] {
+        let root = copied_minimal_fixture();
+        let path = root.path().join("properties").join(property);
+        let source = fs::read_to_string(&path).expect("property fixture");
+        fs::write(&path, source.replacen("usage: statement", replacement, 1).replacen("usage: qualifier", replacement, 1)).expect("updated property fixture");
+
+        assert!(
+            validate_repository(root.path()).iter().any(|diagnostic| diagnostic.message == expected_message),
+            "missing diagnostic: {expected_message}"
+        );
+    }
+
+    let root = copied_minimal_fixture();
+    let path = root.path().join("properties/P2.yaml");
+    let source = fs::read_to_string(&path).expect("property fixture");
+    fs::write(&path, source.replace("usage: qualifier", "usage: both")).expect("updated property fixture");
+    assert!(validate_repository(root.path()).is_empty());
+}
+
+#[test]
+fn external_ids_require_meaningful_unique_identifiers() {
+    for (block, expected_message) in [
+        ("external_ids:\n  '   ': [P1082]\n", "external_ids namespace must not be empty"),
+        ("external_ids:\n  wikidata: ['   ']\n", "external_ids.wikidata identifier must not be empty"),
+        (
+            "external_ids:\n  wikidata: [P1082, P1082]\n",
+            "external_ids.wikidata contains duplicate identifier \"P1082\"",
+        ),
+    ] {
+        let root = copied_minimal_fixture();
+        let path = root.path().join("properties/P1.yaml");
+        let source = fs::read_to_string(&path).expect("property fixture");
+        fs::write(&path, format!("{source}{block}")).expect("updated property fixture");
+
+        assert!(
+            validate_repository(root.path()).iter().any(|diagnostic| diagnostic.message == expected_message),
+            "missing diagnostic: {expected_message}"
+        );
+    }
+
+    let root = copied_minimal_fixture();
+    let path = root.path().join("properties/P1.yaml");
+    let source = fs::read_to_string(&path).expect("property fixture");
+    fs::write(&path, format!("{source}external_ids:\n  wikidata: [P1082, P2046]\n  osm: []\n")).expect("updated property fixture");
+    assert!(validate_repository(root.path()).is_empty());
+}
+
+#[test]
+fn ontology_text_may_be_uncited_but_entity_text_must_be_cited() {
+    let root = copied_minimal_fixture();
+    for path in [root.path().join("properties/P1.yaml"), root.path().join("entity_types/T1.yaml")] {
+        let source = fs::read_to_string(&path).expect("ontology fixture");
+        fs::write(&path, source.replace("references: [R1]", "references: []")).expect("updated ontology fixture");
+    }
+    assert!(validate_repository(root.path()).is_empty());
+
+    let path = root.path().join("entities/Q1.yaml");
+    let source = fs::read_to_string(&path).expect("entity fixture");
+    fs::write(&path, source.replacen("references: [R1]", "references: []", 1)).expect("updated entity fixture");
+    assert!(
+        validate_repository(root.path())
+            .iter()
+            .any(|diagnostic| diagnostic.message == "labels.tr references must not be empty")
+    );
+}

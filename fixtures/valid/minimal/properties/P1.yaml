@@ -5,4 +5,5 @@ labels:
     references: [R1]
 subject_types: [T1]
 value_type: integer
+usage: statement
 allowed_qualifiers: [P2]

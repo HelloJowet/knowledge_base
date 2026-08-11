@@ -27,8 +27,8 @@ pub(super) fn validate(validator: &mut Validator<'_>) {
 fn validate_entity_types(items: &[Loaded<EntityType>], references: &BTreeMap<ReferenceId, &Loaded<Reference>>, diagnostics: &mut Diagnostics) {
     for item in items {
         let id = item.value.id.to_string();
-        validate_localized_map(&item.path, &id, "labels", &item.value.labels, true, references, diagnostics);
-        validate_localized_map(&item.path, &id, "descriptions", &item.value.descriptions, false, references, diagnostics);
+        validate_localized_map(&item.path, &id, "labels", &item.value.labels, true, false, references, diagnostics);
+        validate_localized_map(&item.path, &id, "descriptions", &item.value.descriptions, false, false, references, diagnostics);
     }
 }
 
@@ -41,8 +41,22 @@ fn validate_properties(validator: &mut Validator<'_>) {
     for item in &validator.repository.properties {
         let property = &item.value;
         let id = property.id.to_string();
-        validate_localized_map(&item.path, &id, "labels", &property.labels, true, references, diagnostics);
-        validate_localized_map(&item.path, &id, "descriptions", &property.descriptions, false, references, diagnostics);
+        validate_localized_map(&item.path, &id, "labels", &property.labels, true, false, references, diagnostics);
+        validate_localized_map(&item.path, &id, "descriptions", &property.descriptions, false, false, references, diagnostics);
+
+        for (namespace, identifiers) in &property.external_ids {
+            if namespace.trim().is_empty() {
+                diagnostics.schema(item, &id, "external_ids namespace must not be empty");
+            }
+            let mut seen = std::collections::BTreeSet::new();
+            for identifier in identifiers {
+                if identifier.trim().is_empty() {
+                    diagnostics.schema(item, &id, format!("external_ids.{namespace} identifier must not be empty"));
+                } else if !seen.insert(identifier) {
+                    diagnostics.schema(item, &id, format!("external_ids.{namespace} contains duplicate identifier {identifier:?}"));
+                }
+            }
+        }
 
         if property.subject_types.is_empty() {
             diagnostics.schema(item, &id, "subject_types must not be empty");

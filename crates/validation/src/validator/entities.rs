@@ -15,8 +15,8 @@ pub(super) fn validate(validator: &mut Validator<'_>) {
     for item in &validator.repository.entities {
         let entity = &item.value;
         let id = entity.id.to_string();
-        validate_localized_map(&item.path, &id, "labels", &entity.labels, true, references, diagnostics);
-        validate_localized_map(&item.path, &id, "descriptions", &entity.descriptions, false, references, diagnostics);
+        validate_localized_map(&item.path, &id, "labels", &entity.labels, true, true, references, diagnostics);
+        validate_localized_map(&item.path, &id, "descriptions", &entity.descriptions, false, true, references, diagnostics);
 
         if entity.entity_types.is_empty() {
             diagnostics.schema(item, &id, "entity_types must not be empty");
@@ -50,6 +50,13 @@ pub(super) fn validate(validator: &mut Validator<'_>) {
 
             let main_property = properties.get(&statement.property).map(|item| &item.value);
             if let Some(main_property) = main_property {
+                if !main_property.usage.allows_statement() {
+                    diagnostics.ontology(
+                        item,
+                        &format!("{id}/{}", statement.id),
+                        format!("property {} cannot be used as a statement", main_property.id),
+                    );
+                }
                 validate_property_use(item, entity, &format!("{id}/{}", statement.id), main_property, &statement.value, entities, diagnostics);
             } else {
                 diagnostics.ontology(item, &id, format!("statement property {} does not exist", statement.property));
@@ -72,6 +79,13 @@ pub(super) fn validate(validator: &mut Validator<'_>) {
                     diagnostics.ontology(item, &id, format!("qualifier property {} does not exist", qualifier.property));
                     continue;
                 };
+                if !qualifier_property.usage.allows_qualifier() {
+                    diagnostics.ontology(
+                        item,
+                        &format!("{id}/{}", statement.id),
+                        format!("property {} cannot be used as a qualifier", qualifier_property.id),
+                    );
+                }
                 validate_property_use(
                     item,
                     entity,

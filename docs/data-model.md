@@ -12,7 +12,7 @@ This page defines the knowledge-base file format. Fields are required unless the
 - Language keys are well-formed BCP 47 tags and are unique when compared case-insensitively.
 - URL fields contain absolute URLs.
 
-Labels and descriptions are maps keyed by language. Each value cites at least one reference:
+Labels and descriptions are maps keyed by language. Entity labels and descriptions each cite at least one reference. Entity-type and property labels and descriptions are internally authored vocabulary, so their reference lists may be empty:
 
 ```yaml
 labels:
@@ -47,11 +47,20 @@ labels:
     references: [R1]
 subject_types: [T1]
 value_type: integer
+usage: statement
 allowed_qualifiers: [P2]
 cardinality: many
 ```
 
-Required fields are `id`, `labels`, `subject_types`, and `value_type`. `descriptions` is optional, `allowed_qualifiers` defaults to `[]`, and `cardinality` defaults to `many`.
+Required fields are `id`, `labels`, `subject_types`, `value_type`, and `usage`. `usage` is `statement`, `qualifier`, or `both`; it declares whether the property may be used as a top-level statement, a qualifier, or either. `descriptions` is optional, `allowed_qualifiers` defaults to `[]`, `cardinality` defaults to `many`, and `external_ids` defaults to `{}`.
+
+`external_ids` maps a non-empty external-system namespace to zero or more non-empty external property identifiers. Identifiers must not be repeated within a namespace:
+
+```yaml
+external_ids:
+  wikidata: [P1082, P2046]
+  osm: []
+```
 
 `cardinality: one` allows at most one top-level statement with that property per entity. Cardinality does not apply to qualifiers.
 
@@ -72,7 +81,7 @@ cardinality: one
 
 A property applies to an entity when at least one of the entity's types appears in `subject_types`. An entity value is valid when at least one type of the target entity appears in `target_types`.
 
-A qualifier property must apply to the entity and appear in the main property's `allowed_qualifiers`.
+A qualifier property must have `usage: qualifier` or `usage: both`, apply to the entity, and appear in the main property's `allowed_qualifiers`. A top-level statement property must have `usage: statement` or `usage: both`.
 
 ## Entities
 

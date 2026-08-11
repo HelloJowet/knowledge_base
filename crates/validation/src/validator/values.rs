@@ -77,6 +77,7 @@ pub(super) fn validate_localized_map(
     field: &str,
     values: &LocalizedMap,
     required: bool,
+    references_required: bool,
     references: &BTreeMap<ReferenceId, &Loaded<Reference>>,
     diagnostics: &mut Diagnostics,
 ) {
@@ -109,7 +110,11 @@ pub(super) fn validate_localized_map(
                 format!("{field} contains locale {locale:?} more than once ignoring case"),
             );
         }
-        validate_provenance(path, owner, &format!("{field}.{locale}"), &value.references, references, diagnostics);
+        if references_required {
+            validate_provenance(path, owner, &format!("{field}.{locale}"), &value.references, references, diagnostics);
+        } else {
+            validate_optional_provenance(path, owner, &format!("{field}.{locale}"), &value.references, references, diagnostics);
+        }
     }
 }
 

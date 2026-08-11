@@ -448,7 +448,7 @@ fn statement_apply_commits_multiple_entities_after_complete_validation() {
     let root = copied_fixture();
     fs::write(
         root.path().join("properties/P4.yaml"),
-        "id: P4\nlabels:\n  en:\n    text: external identifier\n    references: [R1]\nsubject_types: [T2]\nvalue_type: string\ncardinality: one\n",
+        "id: P4\nlabels:\n  en:\n    text: external identifier\n    references: [R1]\nsubject_types: [T2]\nvalue_type: string\nusage: statement\ncardinality: one\n",
     )
     .unwrap();
     fs::write(

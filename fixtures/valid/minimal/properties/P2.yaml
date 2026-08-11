@@ -5,3 +5,4 @@ labels:
     references: [R1]
 subject_types: [T1]
 value_type: date
+usage: qualifier
