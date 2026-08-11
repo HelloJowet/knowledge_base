@@ -74,15 +74,19 @@ impl Diagnostics {
     }
 
     pub(crate) fn finish(mut self) -> Vec<Diagnostic> {
-        self.0.sort_by(|left, right| {
-            (&left.path, left.line.unwrap_or(usize::MAX), &left.identifier, &left.message, left.layer).cmp(&(
-                &right.path,
-                right.line.unwrap_or(usize::MAX),
-                &right.identifier,
-                &right.message,
-                right.layer,
-            ))
-        });
+        sort_diagnostics(&mut self.0);
         self.0
     }
+}
+
+pub(crate) fn sort_diagnostics(diagnostics: &mut [Diagnostic]) {
+    diagnostics.sort_by(|left, right| {
+        (&left.path, left.line.unwrap_or(usize::MAX), &left.identifier, &left.message, left.layer).cmp(&(
+            &right.path,
+            right.line.unwrap_or(usize::MAX),
+            &right.identifier,
+            &right.message,
+            right.layer,
+        ))
+    });
 }

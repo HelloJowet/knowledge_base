@@ -43,4 +43,38 @@ Equivalent read services are available through `entity_types()`, `properties()`,
 
 Mutations use a shared `.knowledge-base.lock`, validate a staged repository, detect changes made after planning, and attempt rollback if a later replacement fails. Multi-file mutations are not crash-atomic.
 
+## Domain validators
+
+A domain CLI can make its rules mandatory for both direct validation and every mutation by constructing `KnowledgeBase` with additional validators:
+
+```rust
+use knowledge_base_crud::KnowledgeBase;
+use knowledge_base_validation::{AdditionalValidator, Diagnostic, ValidationLayer};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+struct TransportValidator;
+
+impl AdditionalValidator for TransportValidator {
+    fn validate(&self, _repository: &Path) -> Vec<Diagnostic> {
+        vec![Diagnostic {
+            layer: ValidationLayer::Domain,
+            path: PathBuf::from("entities/Q1.yaml"),
+            line: None,
+            identifier: Some("Q1".to_owned()),
+            message: "example transport rule".to_owned(),
+        }]
+    }
+}
+
+let knowledge_base = KnowledgeBase::with_additional_validators(
+    "/path/to/knowledge-base",
+    [Arc::new(TransportValidator)],
+);
+let diagnostics = knowledge_base.validate();
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Configured validators run in registration order against the locked baseline and the complete staged result. Any diagnostic rejects the mutation before files change; preview mode uses the same staged validation path. The generic `knowledge-base` CLI does not configure domain validators—domain CLIs must create their own configured `KnowledgeBase` instance.
+
 `references().register()` accepts an ID-less `ReferenceDraft`. It reuses a reference only when its stored URL exactly equals the draft URL; otherwise it allocates the next `R<n>` identifier and updates `id_allocation.yaml` in the same mutation. Draft metadata is validated before the lock is acquired, and both the baseline and fully staged repositories are validated under the lock. Preview mode performs the same checks without writing files.

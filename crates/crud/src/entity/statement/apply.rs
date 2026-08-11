@@ -3,20 +3,19 @@ use super::{ApplyMode, ApplyStatementsOutcome, StatementBatch, StatementResultSt
 use crate::Error;
 use crate::entity::Entities;
 use crate::mutation::{MutationLock, commit, validate_staged};
-use knowledge_base_validation::validate_repository;
 
 impl Entities<'_> {
     pub fn apply_statements(&self, batch: &StatementBatch, mode: ApplyMode) -> Result<ApplyStatementsOutcome, Error> {
         validate_batch(batch)?;
         let _lock = MutationLock::acquire(self.knowledge_base.root())?;
 
-        let baseline = validate_repository(self.knowledge_base.root());
+        let baseline = self.knowledge_base.validate();
         if !baseline.is_empty() {
             return Err(Error::Validation(baseline));
         }
 
         let plan = StatementPlanner::new(self.knowledge_base.root(), batch).plan()?;
-        validate_staged(self.knowledge_base.root(), &plan.edits)?;
+        validate_staged(self.knowledge_base.root(), &plan.edits, self.knowledge_base.additional_validators())?;
 
         if !plan.all_new() {
             return Ok(ApplyStatementsOutcome::NotApplied(plan.results));

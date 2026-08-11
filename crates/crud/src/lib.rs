@@ -17,20 +17,50 @@ pub use error::Error;
 pub use property::Properties;
 pub use reference::{ReferenceDraft, ReferenceRegistrationOutcome, ReferenceRegistrationStatus, References};
 
+use knowledge_base_validation::{AdditionalValidator, Diagnostic, validate_repository_with};
+use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct KnowledgeBase {
     root: PathBuf,
+    additional_validators: Vec<Arc<dyn AdditionalValidator>>,
+}
+
+impl fmt::Debug for KnowledgeBase {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("KnowledgeBase")
+            .field("root", &self.root)
+            .field("additional_validator_count", &self.additional_validators.len())
+            .finish()
+    }
 }
 
 impl KnowledgeBase {
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        Self::with_additional_validators(root, [])
+    }
+
+    pub fn with_additional_validators(root: impl Into<PathBuf>, validators: impl IntoIterator<Item = Arc<dyn AdditionalValidator>>) -> Self {
+        Self {
+            root: root.into(),
+            additional_validators: validators.into_iter().collect(),
+        }
     }
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Validates this repository with the built-in and configured domain validators.
+    pub fn validate(&self) -> Vec<Diagnostic> {
+        validate_repository_with(&self.root, self.additional_validators.iter().map(AsRef::as_ref))
+    }
+
+    pub(crate) fn additional_validators(&self) -> &[Arc<dyn AdditionalValidator>] {
+        &self.additional_validators
     }
 
     pub fn entities(&self) -> Entities<'_> {

@@ -1,6 +1,7 @@
-use knowledge_base_validation::{Diagnostic, ValidationLayer, validate_repository};
+use knowledge_base_validation::{AdditionalValidator, Diagnostic, ValidationLayer, validate_repository, validate_repository_with};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..").join("fixtures").join(name)
@@ -32,6 +33,55 @@ fn multiple_diagnostics_are_complete_and_deterministic() {
         (&pair[0].path, pair[0].line.unwrap_or(usize::MAX), &pair[0].identifier, &pair[0].message, pair[0].layer)
             <= (&pair[1].path, pair[1].line.unwrap_or(usize::MAX), &pair[1].identifier, &pair[1].message, pair[1].layer)
     }));
+}
+
+#[test]
+fn additional_validators_all_run_and_their_diagnostics_are_sorted_with_built_ins() {
+    let root = tempfile::tempdir().expect("temporary directory");
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let first_calls = Arc::clone(&calls);
+    let first = move |path: &Path| {
+        first_calls.lock().unwrap().push(("first", path.to_path_buf()));
+        vec![Diagnostic {
+            layer: ValidationLayer::Domain,
+            path: PathBuf::from("z-domain.yaml"),
+            line: None,
+            identifier: None,
+            message: "last".to_owned(),
+        }]
+    };
+    let second_calls = Arc::clone(&calls);
+    let second = move |path: &Path| {
+        second_calls.lock().unwrap().push(("second", path.to_path_buf()));
+        vec![Diagnostic {
+            layer: ValidationLayer::Domain,
+            path: PathBuf::from("a-domain.yaml"),
+            line: None,
+            identifier: None,
+            message: "first".to_owned(),
+        }]
+    };
+    let validators: [&dyn AdditionalValidator; 2] = [&first, &second];
+
+    let diagnostics = validate_repository_with(root.path(), validators);
+
+    assert_eq!(
+        calls.lock().unwrap().as_slice(),
+        [("first", root.path().to_path_buf()), ("second", root.path().to_path_buf())]
+    );
+    assert!(diagnostics.iter().any(|diagnostic| diagnostic.layer == ValidationLayer::Schema));
+    let domain_paths = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.layer == ValidationLayer::Domain)
+        .map(|diagnostic| diagnostic.path.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(domain_paths, [PathBuf::from("a-domain.yaml"), PathBuf::from("z-domain.yaml")]);
+}
+
+#[test]
+fn validation_without_additional_validators_is_unchanged() {
+    let root = fixture("valid/minimal");
+    assert_eq!(validate_repository(&root), validate_repository_with(&root, std::iter::empty()));
 }
 
 #[test]

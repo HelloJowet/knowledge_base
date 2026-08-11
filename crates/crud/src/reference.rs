@@ -2,7 +2,6 @@ use crate::mutation::{FileEdit, MutationLock, commit, validate_staged};
 use crate::{ApplyMode, Error, KnowledgeBase, resource};
 use chrono::{DateTime, NaiveDate};
 use knowledge_base_models::{IdAllocation, Reference, ReferenceId};
-use knowledge_base_validation::validate_repository;
 use language_tags::LanguageTag;
 use serde::Serialize;
 use std::fs;
@@ -53,13 +52,13 @@ impl<'a> References<'a> {
         let root = self.knowledge_base.root();
         let _lock = MutationLock::acquire(root)?;
 
-        let baseline = validate_repository(root);
+        let baseline = self.knowledge_base.validate();
         if !baseline.is_empty() {
             return Err(Error::Validation(baseline));
         }
 
         if let Some(reference) = find_reference_by_url(root, &draft.url)? {
-            validate_staged(root, &[])?;
+            validate_staged(root, &[], self.knowledge_base.additional_validators())?;
             return Ok(ReferenceRegistrationOutcome {
                 status: ReferenceRegistrationStatus::Existing,
                 reference,
@@ -67,7 +66,7 @@ impl<'a> References<'a> {
         }
 
         let (reference, edits) = plan_registration(root, draft)?;
-        validate_staged(root, &edits)?;
+        validate_staged(root, &edits, self.knowledge_base.additional_validators())?;
         if mode == ApplyMode::Preview {
             return Ok(ReferenceRegistrationOutcome {
                 status: ReferenceRegistrationStatus::Previewed,

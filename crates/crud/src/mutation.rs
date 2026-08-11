@@ -1,6 +1,6 @@
 use crate::Error;
 use fs2::FileExt;
-use knowledge_base_validation::validate_repository;
+use knowledge_base_validation::{AdditionalValidator, validate_repository_with};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -40,7 +40,7 @@ impl Drop for MutationLock {
     }
 }
 
-pub(crate) fn validate_staged(root: &Path, edits: &[FileEdit]) -> Result<(), Error> {
+pub(crate) fn validate_staged(root: &Path, edits: &[FileEdit], validators: &[std::sync::Arc<dyn AdditionalValidator>]) -> Result<(), Error> {
     let staging = tempfile::tempdir().map_err(|source| Error::Write {
         path: std::env::temp_dir(),
         source,
@@ -54,7 +54,7 @@ pub(crate) fn validate_staged(root: &Path, edits: &[FileEdit]) -> Result<(), Err
         let path = staging.path().join(relative);
         fs::write(&path, &edit.replacement).map_err(|source| Error::Write { path, source })?;
     }
-    let diagnostics = validate_repository(staging.path());
+    let diagnostics = validate_repository_with(staging.path(), validators.iter().map(AsRef::as_ref));
     if diagnostics.is_empty() { Ok(()) } else { Err(Error::Validation(diagnostics)) }
 }
 
