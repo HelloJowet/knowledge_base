@@ -4,5 +4,5 @@ use knowledge_base_models::PropertyId;
 use std::process::ExitCode;
 
 pub fn execute(knowledge_base: &KnowledgeBase, id: &PropertyId) -> Result<ExitCode, CommandError> {
-    write_content(&knowledge_base.read_property(id)?)
+    write_content(&knowledge_base.properties().read(id)?)
 }

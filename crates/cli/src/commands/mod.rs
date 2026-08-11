@@ -6,7 +6,7 @@ pub mod reference;
 mod validate;
 
 use clap::Subcommand;
-use knowledge_base_crud::{CrudError, KnowledgeBase};
+use knowledge_base_crud::{Error, KnowledgeBase};
 use std::fmt;
 use std::io::{self, Write};
 use std::path::Path;
@@ -45,7 +45,8 @@ pub enum Command {
 
 #[derive(Debug)]
 pub enum CommandError {
-    Crud(CrudError),
+    Crud(Error),
+    Serialization(serde_yaml::Error),
     Output(io::Error),
 }
 
@@ -53,13 +54,14 @@ impl fmt::Display for CommandError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Crud(error) => error.fmt(formatter),
+            Self::Serialization(error) => write!(formatter, "cannot serialize command output: {error}"),
             Self::Output(error) => write!(formatter, "cannot write command output: {error}"),
         }
     }
 }
 
-impl From<CrudError> for CommandError {
-    fn from(error: CrudError) -> Self {
+impl From<Error> for CommandError {
+    fn from(error: Error) -> Self {
         Self::Crud(error)
     }
 }

@@ -11,6 +11,8 @@ clap.workspace = true
 knowledge-base-crud.workspace = true
 knowledge-base-models.workspace = true
 knowledge-base-validation.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
 
 [dev-dependencies]
 tempfile = "3"

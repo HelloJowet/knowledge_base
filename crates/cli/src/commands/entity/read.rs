@@ -4,5 +4,5 @@ use knowledge_base_models::EntityId;
 use std::process::ExitCode;
 
 pub fn execute(knowledge_base: &KnowledgeBase, id: &EntityId) -> Result<ExitCode, CommandError> {
-    write_content(&knowledge_base.read_entity(id)?)
+    write_content(&knowledge_base.entities().read(id)?)
 }

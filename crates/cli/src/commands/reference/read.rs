@@ -4,5 +4,5 @@ use knowledge_base_models::ReferenceId;
 use std::process::ExitCode;
 
 pub fn execute(knowledge_base: &KnowledgeBase, id: &ReferenceId) -> Result<ExitCode, CommandError> {
-    write_content(&knowledge_base.read_reference(id)?)
+    write_content(&knowledge_base.references().read(id)?)
 }

@@ -1,7 +1,19 @@
-mod read;
+mod entity;
+mod entity_context;
+mod entity_type;
+mod error;
+mod mutation;
+mod property;
+mod reference;
+mod resource;
 
-use std::fmt;
-use std::io;
+pub use entity::{ApplyMode, ApplyStatementsOutcome, Entities, StatementBatch, StatementInput, StatementResult, StatementResultStatus};
+pub use entity_context::EntityContexts;
+pub use entity_type::EntityTypes;
+pub use error::Error;
+pub use property::Properties;
+pub use reference::References;
+
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
@@ -17,23 +29,24 @@ impl KnowledgeBase {
     pub fn root(&self) -> &Path {
         &self.root
     }
-}
 
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct CrudError {
-    pub path: PathBuf,
-    pub source: io::Error,
-}
-
-impl fmt::Display for CrudError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "cannot read {}: {}", self.path.display(), self.source)
+    pub fn entities(&self) -> Entities<'_> {
+        Entities::new(self)
     }
-}
 
-impl std::error::Error for CrudError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.source)
+    pub fn entity_types(&self) -> EntityTypes<'_> {
+        EntityTypes::new(self)
+    }
+
+    pub fn properties(&self) -> Properties<'_> {
+        Properties::new(self)
+    }
+
+    pub fn references(&self) -> References<'_> {
+        References::new(self)
+    }
+
+    pub fn entity_contexts(&self) -> EntityContexts<'_> {
+        EntityContexts::new(self)
     }
 }

@@ -161,7 +161,7 @@ pub struct Qualifier {
     pub value: Value,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase", deny_unknown_fields)]
 pub enum Value {
     Entity { value: EntityId },

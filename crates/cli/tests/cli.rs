@@ -10,6 +10,29 @@ fn knowledge_base_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_knowledge-base"))
 }
 
+fn copied_fixture() -> tempfile::TempDir {
+    let destination = tempfile::tempdir().expect("temporary knowledge base");
+    for directory in ["entities", "entity_types", "properties", "references", "entity_context"] {
+        let source_directory = fixture().join(directory);
+        if !source_directory.exists() {
+            continue;
+        }
+        fs::create_dir(destination.path().join(directory)).expect("create fixture directory");
+        for entry in fs::read_dir(source_directory).expect("read fixture directory") {
+            let entry = entry.expect("read fixture entry");
+            fs::copy(entry.path(), destination.path().join(directory).join(entry.file_name())).expect("copy fixture file");
+        }
+    }
+    fs::copy(fixture().join("id_allocation.yaml"), destination.path().join("id_allocation.yaml")).expect("copy allocation");
+    destination
+}
+
+fn write_manifest(root: &Path, source: &str) -> PathBuf {
+    let path = root.join("statement-manifest.yaml");
+    fs::write(&path, source).expect("write statement manifest");
+    path
+}
+
 #[test]
 fn read_commands_print_files_exactly_as_stored() {
     let root = fixture();
@@ -132,4 +155,167 @@ fn non_utf8_resources_are_read_errors() {
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("cannot read"));
     assert!(output.stdout.is_empty());
+}
+
+#[test]
+fn statement_apply_dry_run_reports_planned_addition_without_changing_entity() {
+    let root = copied_fixture();
+    let manifest = write_manifest(
+        root.path(),
+        "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 123456789 }\n    references: [R1]\n",
+    );
+    let entity_path = root.path().join("entities/Q1.yaml");
+    let before = fs::read(&entity_path).unwrap();
+
+    let output = knowledge_base_command()
+        .args(["entity", "statement", "apply"])
+        .arg(&manifest)
+        .arg("--dry-run")
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("run statement dry-run");
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        "outcome: previewed\nresults:\n- index: 1\n  entity: Q1\n  property: P1\n  statement: S4\n  status: would_add\n"
+    );
+    assert_eq!(fs::read(entity_path).unwrap(), before);
+}
+
+#[test]
+fn statement_apply_preserves_text_and_repeated_apply_is_rejected() {
+    let root = copied_fixture();
+    let manifest_source = "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 123456789 }\n    references: [R1]\n";
+    let manifest = write_manifest(root.path(), manifest_source);
+    let entity_path = root.path().join("entities/Q1.yaml");
+    let source = fs::read_to_string(&entity_path).unwrap().replace("statements:\n", "# retained comment\nstatements:\n");
+    fs::write(&entity_path, &source).unwrap();
+
+    let applied = knowledge_base_command()
+        .args(["entity", "statement", "apply"])
+        .arg(&manifest)
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("apply statement manifest");
+    assert!(applied.status.success(), "{}", String::from_utf8_lossy(&applied.stderr));
+    let changed = fs::read_to_string(&entity_path).unwrap();
+    assert!(changed.starts_with(&source));
+    assert!(changed.contains("  - id: S4\n    property: P1\n"));
+    assert!(changed.contains("# retained comment"));
+    assert_eq!(fs::read_to_string(&manifest).unwrap(), manifest_source);
+
+    let repeated = knowledge_base_command()
+        .args(["entity", "statement", "apply"])
+        .arg(&manifest)
+        .arg("--dry-run")
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("repeat statement manifest");
+    assert!(!repeated.status.success());
+    assert!(String::from_utf8_lossy(&repeated.stdout).contains("status: already_present"));
+    assert_eq!(fs::read_to_string(&entity_path).unwrap(), changed);
+}
+
+#[test]
+fn duplicate_manifest_rows_are_reported_and_never_written() {
+    let root = copied_fixture();
+    let manifest = write_manifest(
+        root.path(),
+        "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    references: [R1]\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    references: [R1]\n",
+    );
+    let entity_path = root.path().join("entities/Q1.yaml");
+    let before = fs::read(&entity_path).unwrap();
+
+    let output = knowledge_base_command()
+        .args(["entity", "statement", "apply"])
+        .arg(&manifest)
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("apply duplicate statement manifest");
+
+    assert!(!output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("statement: S4\n  status: would_add"));
+    assert!(stdout.contains("statement: S4\n  status: already_present"));
+    assert!(stdout.starts_with("outcome: not_applied\n"));
+    assert_eq!(fs::read(entity_path).unwrap(), before);
+}
+
+#[test]
+fn invalid_statement_manifests_fail_without_results_or_writes() {
+    let cases = [
+        (
+            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: string, value: wrong-type }\n    references: [R1]\n",
+            "requires integer values",
+        ),
+        (
+            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    references: []\n",
+            "references must not be empty",
+        ),
+        (
+            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    references: [R1]\n    qualifiers: []\n",
+            "unknown field `qualifiers`",
+        ),
+    ];
+
+    for (manifest_source, expected_error) in cases {
+        let root = copied_fixture();
+        let manifest = write_manifest(root.path(), manifest_source);
+        let entity_path = root.path().join("entities/Q1.yaml");
+        let before = fs::read(&entity_path).unwrap();
+        let output = knowledge_base_command()
+            .args(["entity", "statement", "apply"])
+            .arg(&manifest)
+            .arg("--dry-run")
+            .env("KNOWLEDGE_BASE_PATH", root.path())
+            .output()
+            .expect("run invalid statement manifest");
+
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(String::from_utf8_lossy(&output.stderr).contains(expected_error));
+        assert_eq!(fs::read(entity_path).unwrap(), before);
+    }
+}
+
+#[test]
+fn statement_apply_commits_multiple_entities_after_complete_validation() {
+    let root = copied_fixture();
+    fs::write(
+        root.path().join("properties/P4.yaml"),
+        "id: P4\nlabels:\n  en:\n    text: external identifier\n    references: [R1]\nsubject_types: [T2]\nvalue_type: string\ncardinality: one\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("id_allocation.yaml"),
+        "version: 1\nnext:\n  entity: 3\n  property: 5\n  reference: 2\n  entity_type: 3\n",
+    )
+    .unwrap();
+    let manifest = write_manifest(
+        root.path(),
+        "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    references: [R1]\n  - entity: Q2\n    property: P4\n    value: { type: string, value: Q987654 }\n    references: [R1]\n",
+    );
+
+    let output = knowledge_base_command()
+        .args(["entity", "statement", "apply"])
+        .arg(&manifest)
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("apply multi-entity statement manifest");
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("entity: Q1\n  property: P1\n  statement: S4\n  status: added"));
+    assert!(stdout.contains("entity: Q2\n  property: P4\n  statement: S1\n  status: added"));
+    assert!(stdout.starts_with("outcome: applied\n"));
+    assert!(fs::read_to_string(root.path().join("entities/Q1.yaml")).unwrap().contains("value: 42"));
+    assert!(fs::read_to_string(root.path().join("entities/Q2.yaml")).unwrap().contains("value: Q987654"));
+
+    let validation = knowledge_base_command()
+        .arg("validate")
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("validate applied repository");
+    assert!(validation.status.success(), "{}", String::from_utf8_lossy(&validation.stderr));
 }

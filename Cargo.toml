@@ -15,6 +15,7 @@ license = "MIT"
 [workspace.dependencies]
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
+fs2 = "0.4"
 knowledge-base-crud = { path = "crates/crud" }
 knowledge-base-models = { path = "crates/models" }
 knowledge-base-validation = { path = "crates/validation" }
@@ -23,4 +24,6 @@ pulldown-cmark = "0.13"
 regex = "1.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+tempfile = "3"
 url = "2.5"
+yaml-edit = "0.2.3"

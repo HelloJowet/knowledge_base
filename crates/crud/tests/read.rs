@@ -18,23 +18,23 @@ fn reads_every_supported_resource_without_normalizing_it() {
     let reference_id = "R1".parse::<ReferenceId>().expect("valid reference identifier");
 
     assert_eq!(
-        knowledge_base.read_entity(&entity_id).expect("read entity"),
+        knowledge_base.entities().read(&entity_id).expect("read entity"),
         fs::read_to_string(root.join("entities/Q1.yaml")).unwrap()
     );
     assert_eq!(
-        knowledge_base.read_entity_type(&type_id).expect("read type"),
+        knowledge_base.entity_types().read(&type_id).expect("read type"),
         fs::read_to_string(root.join("entity_types/T1.yaml")).unwrap()
     );
     assert_eq!(
-        knowledge_base.read_property(&property_id).expect("read property"),
+        knowledge_base.properties().read(&property_id).expect("read property"),
         fs::read_to_string(root.join("properties/P1.yaml")).unwrap()
     );
     assert_eq!(
-        knowledge_base.read_reference(&reference_id).expect("read reference"),
+        knowledge_base.references().read(&reference_id).expect("read reference"),
         fs::read_to_string(root.join("references/R1.yaml")).unwrap()
     );
     assert_eq!(
-        knowledge_base.read_entity_context(&entity_id).expect("read context"),
+        knowledge_base.entity_contexts().read(&entity_id).expect("read context"),
         fs::read_to_string(root.join("entity_context/Q1.md")).unwrap()
     );
 }
@@ -45,8 +45,12 @@ fn missing_resource_error_contains_the_resolved_path() {
     let knowledge_base = KnowledgeBase::new(&root);
     let id = "Q999".parse::<EntityId>().expect("valid entity identifier");
 
-    let error = knowledge_base.read_entity(&id).expect_err("resource should be missing");
+    let error = knowledge_base.entities().read(&id).expect_err("resource should be missing");
 
-    assert_eq!(error.path, root.join("entities/Q999.yaml"));
+    assert!(matches!(
+        &error,
+        knowledge_base_crud::Error::Read { path, .. }
+            if path == &root.join("entities/Q999.yaml")
+    ));
     assert!(error.to_string().contains("Q999.yaml"));
 }
