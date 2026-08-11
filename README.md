@@ -31,6 +31,23 @@ See the [data model](docs/data-model.md) for the file format. The example in [`f
 
 The `knowledge-base` executable validates, reads, queries, and updates a knowledge base. See the [CLI documentation](docs/cli/README.md) for setup, commands, and examples.
 
+## Agent skills
+
+Reusable skills teach compatible AI coding agents how to operate the CLI and author files that follow the data model. Install both skills from this repository with the [skills CLI](https://www.skills.sh/docs):
+
+```sh
+npx skills add HelloJowet/knowledge_base \
+  --skill knowledge-base-cli \
+  --skill knowledge-base-data-model
+```
+
+Install either skill independently when only one capability is needed:
+
+```sh
+npx skills add HelloJowet/knowledge_base --skill knowledge-base-cli
+npx skills add HelloJowet/knowledge_base --skill knowledge-base-data-model
+```
+
 ## Development
 
 The workspace contains models, filesystem CRUD, validation, and CLI crates:

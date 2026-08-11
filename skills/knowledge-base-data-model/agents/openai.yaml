@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Base Data Model"
+  short_description: "Author valid knowledge base files"
+  default_prompt: "Use $knowledge-base-data-model to add a valid resource to my knowledge base."

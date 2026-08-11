@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Base CLI"
+  short_description: "Operate file-based knowledge bases safely"
+  default_prompt: "Use $knowledge-base-cli to validate and query my configured knowledge base."
