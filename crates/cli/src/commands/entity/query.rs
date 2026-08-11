@@ -46,15 +46,26 @@ fn parse_value(value_type: ValueType, raw: &str) -> Result<Value, String> {
         ValueType::Decimal => canonical_decimal(raw)
             .then(|| Value::Decimal { value: raw.to_owned() })
             .ok_or_else(|| "expected canonical base-10 decimal syntax".to_owned()),
+        ValueType::Quantity => {
+            let (amount, unit) = raw.split_once(',').ok_or_else(|| "expected amount,unit".to_owned())?;
+            if !canonical_decimal(amount) {
+                return Err("amount must use canonical base-10 decimal syntax".to_owned());
+            }
+            if unit.trim().is_empty() {
+                return Err("unit must not be empty".to_owned());
+            }
+            Ok(Value::Quantity {
+                amount: amount.to_owned(),
+                unit: unit.to_owned(),
+            })
+        }
         ValueType::Boolean => match raw {
             "true" => Ok(Value::Boolean { value: true }),
             "false" => Ok(Value::Boolean { value: false }),
             _ => Err("expected true or false".to_owned()),
         },
-        ValueType::Date if canonical_date(raw) => NaiveDate::parse_from_str(raw, "%Y-%m-%d")
-            .map(|_| Value::Date { value: raw.to_owned() })
-            .map_err(|_| "expected a real ISO 8601 calendar date (YYYY-MM-DD)".to_owned()),
-        ValueType::Date => Err("expected a real ISO 8601 calendar date (YYYY-MM-DD)".to_owned()),
+        ValueType::Date if valid_partial_date(raw) => Ok(Value::Date { value: raw.to_owned() }),
+        ValueType::Date => Err("expected a real ISO 8601 calendar year, month, or day (YYYY, YYYY-MM, or YYYY-MM-DD)".to_owned()),
         ValueType::Datetime => DateTime::parse_from_rfc3339(raw)
             .map(|_| Value::Datetime { value: raw.to_owned() })
             .map_err(|_| "expected an RFC 3339 timestamp".to_owned()),
@@ -72,6 +83,7 @@ fn parse_value(value_type: ValueType, raw: &str) -> Result<Value, String> {
             Ok(Value::Coordinate {
                 latitude: latitude.to_owned(),
                 longitude: longitude.to_owned(),
+                precision: None,
             })
         }
     }
@@ -89,11 +101,18 @@ fn canonical_decimal(value: &str) -> bool {
         && (!unsigned.contains('.') || (!fraction.is_empty() && fraction.bytes().all(|byte| byte.is_ascii_digit())))
 }
 
-fn canonical_date(value: &str) -> bool {
-    value.len() == 10
-        && value.as_bytes()[4] == b'-'
-        && value.as_bytes()[7] == b'-'
-        && value.bytes().enumerate().all(|(index, byte)| matches!(index, 4 | 7) || byte.is_ascii_digit())
+fn valid_partial_date(value: &str) -> bool {
+    match value.len() {
+        4 => value.bytes().all(|byte| byte.is_ascii_digit()),
+        7 => value
+            .get(..4)
+            .zip(value.get(5..))
+            .filter(|(year, month)| year.bytes().all(|byte| byte.is_ascii_digit()) && month.bytes().all(|byte| byte.is_ascii_digit()))
+            .and_then(|(year, month)| year.parse::<i32>().ok().zip(month.parse::<u32>().ok()))
+            .is_some_and(|(year, month)| value.as_bytes().get(4) == Some(&b'-') && NaiveDate::from_ymd_opt(year, month, 1).is_some()),
+        10 => NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok(),
+        _ => false,
+    }
 }
 
 fn within_absolute_bound(value: &str, bound: u64) -> bool {
@@ -122,8 +141,16 @@ mod tests {
             (ValueType::String, "a=b", Value::String { value: "a=b".to_owned() }),
             (ValueType::Integer, "-42", Value::Integer { value: -42 }),
             (ValueType::Decimal, "-0.25", Value::Decimal { value: "-0.25".to_owned() }),
+            (
+                ValueType::Quantity,
+                "12.5,km",
+                Value::Quantity {
+                    amount: "12.5".to_owned(),
+                    unit: "km".to_owned(),
+                },
+            ),
             (ValueType::Boolean, "true", Value::Boolean { value: true }),
-            (ValueType::Date, "2024-02-29", Value::Date { value: "2024-02-29".to_owned() }),
+            (ValueType::Date, "2024-02", Value::Date { value: "2024-02".to_owned() }),
             (
                 ValueType::Datetime,
                 "2024-02-29T12:34:56Z",
@@ -144,6 +171,7 @@ mod tests {
                 Value::Coordinate {
                     latitude: "40.1".to_owned(),
                     longitude: "-29.2".to_owned(),
+                    precision: None,
                 },
             ),
         ];
@@ -159,6 +187,8 @@ mod tests {
             (ValueType::Entity, "P1"),
             (ValueType::Integer, "1.5"),
             (ValueType::Decimal, "01.2"),
+            (ValueType::Quantity, "01.2,km"),
+            (ValueType::Quantity, "1.2,   "),
             (ValueType::Boolean, "yes"),
             (ValueType::Date, "2023-02-29"),
             (ValueType::Date, "2024-2-1"),

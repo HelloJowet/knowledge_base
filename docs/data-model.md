@@ -137,11 +137,12 @@ Every statement and qualifier value has a `type`.
 | `string` | `value` is a YAML string |
 | `integer` | `value` is a YAML integer |
 | `decimal` | `value` is a quoted decimal string |
+| `quantity` | `amount` is a quoted decimal string and `unit` is a non-empty string |
 | `boolean` | `value` is a YAML boolean |
-| `date` | `value` is a quoted ISO 8601 date |
+| `date` | `value` is a quoted ISO 8601 year, month, or date (`YYYY`, `YYYY-MM`, or `YYYY-MM-DD`) |
 | `datetime` | `value` is a quoted RFC 3339 timestamp |
 | `url` | `value` is an absolute URL |
-| `coordinate` | `latitude` and `longitude` are quoted decimal strings |
+| `coordinate` | `latitude` and `longitude` are quoted decimal strings; `precision` is an optional positive quoted decimal in metres |
 
 Coordinates do not have a `value` field:
 
@@ -150,6 +151,7 @@ value:
   type: coordinate
   latitude: "40.1419"
   longitude: "29.9793"
+  precision: "10"
 ```
 
 Decimals and coordinates use plain base-10 notation without plus signs, exponent notation, leading zeroes, or digit separators. Latitude is between -90 and 90; longitude is between -180 and 180.

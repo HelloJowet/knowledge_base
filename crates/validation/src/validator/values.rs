@@ -10,7 +10,6 @@ use std::sync::LazyLock;
 use url::Url;
 
 static DECIMAL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$").expect("valid regex"));
-static DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$").expect("valid regex"));
 
 pub(super) fn validate_nonempty_metadata<T>(item: &Loaded<T>, id: &str, field: &str, value: &str, diagnostics: &mut Diagnostics) -> bool {
     if value.trim().is_empty() {
@@ -38,14 +37,18 @@ pub(super) fn valid_partial_date(value: &str) -> bool {
 pub(super) fn validate_value(path: &Path, owner: &str, value: &Value, diagnostics: &mut Diagnostics) {
     let message = match value {
         Value::Decimal { value } if !DECIMAL.is_match(value) => Some("decimal value must use canonical quoted base-10 syntax"),
-        Value::Date { value } if !DATE.is_match(value) || NaiveDate::parse_from_str(value, "%Y-%m-%d").is_err() => Some("date value must be a real ISO 8601 calendar date"),
+        Value::Quantity { amount, unit: _ } if !DECIMAL.is_match(amount) => Some("quantity amount must use canonical quoted base-10 syntax"),
+        Value::Quantity { unit, .. } if unit.trim().is_empty() => Some("quantity unit must not be empty"),
+        Value::Date { value } if !valid_partial_date(value) => Some("date value must be a real ISO 8601 calendar year, month, or day"),
         Value::Datetime { value } if DateTime::parse_from_rfc3339(value).is_err() => Some("datetime value must be an RFC 3339 timestamp"),
         Value::Url { value } if Url::parse(value).is_err() => Some("url value must be an absolute URL"),
-        Value::Coordinate { latitude, longitude } => {
+        Value::Coordinate { latitude, longitude, precision } => {
             if !DECIMAL.is_match(latitude) || !within_absolute_bound(latitude, 90) {
                 Some("coordinate latitude must be canonical decimal text between -90 and 90")
             } else if !DECIMAL.is_match(longitude) || !within_absolute_bound(longitude, 180) {
                 Some("coordinate longitude must be canonical decimal text between -180 and 180")
+            } else if precision.as_ref().is_some_and(|precision| !positive_decimal(precision)) {
+                Some("coordinate precision must be positive canonical decimal text in metres")
             } else {
                 None
             }
@@ -63,6 +66,7 @@ pub(super) fn value_type_name(value_type: ValueType) -> &'static str {
         ValueType::String => "string",
         ValueType::Integer => "integer",
         ValueType::Decimal => "decimal",
+        ValueType::Quantity => "quantity",
         ValueType::Boolean => "boolean",
         ValueType::Date => "date",
         ValueType::Datetime => "datetime",
@@ -183,9 +187,16 @@ fn within_absolute_bound(value: &str, bound: u64) -> bool {
     }
 }
 
+fn positive_decimal(value: &str) -> bool {
+    DECIMAL.is_match(value) && !value.starts_with('-') && value.bytes().any(|byte| matches!(byte, b'1'..=b'9'))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::valid_partial_date;
+    use super::{valid_partial_date, validate_value};
+    use crate::diagnostic::Diagnostics;
+    use knowledge_base_models::Value;
+    use std::path::Path;
 
     #[test]
     fn validates_partial_dates() {
@@ -194,6 +205,79 @@ mod tests {
         }
         for value in ["25", "2025-13", "2025-02-29", "202é-1"] {
             assert!(!valid_partial_date(value), "expected {value} to be invalid");
+        }
+    }
+
+    #[test]
+    fn validates_every_value_type() {
+        let values = [
+            Value::Entity { value: "Q1".parse().unwrap() },
+            Value::String { value: "Bilecik".to_owned() },
+            Value::Integer { value: 42 },
+            Value::Decimal { value: "12.5".to_owned() },
+            Value::Quantity {
+                amount: "12.5".to_owned(),
+                unit: "km".to_owned(),
+            },
+            Value::Boolean { value: true },
+            Value::Date { value: "2024".to_owned() },
+            Value::Date { value: "2024-02".to_owned() },
+            Value::Date { value: "2024-02-29".to_owned() },
+            Value::Datetime {
+                value: "2024-02-29T12:34:56Z".to_owned(),
+            },
+            Value::Url {
+                value: "https://example.org/".to_owned(),
+            },
+            Value::Coordinate {
+                latitude: "40.1419".to_owned(),
+                longitude: "29.9793".to_owned(),
+                precision: Some("10".to_owned()),
+            },
+        ];
+
+        for value in values {
+            let mut diagnostics = Diagnostics::default();
+            validate_value(Path::new("entity.yaml"), "Q1/S1", &value, &mut diagnostics);
+            assert!(diagnostics.finish().is_empty(), "{value:?} should be valid");
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_validated_value_types() {
+        let values = [
+            Value::Decimal { value: "01.2".to_owned() },
+            Value::Quantity {
+                amount: "1e2".to_owned(),
+                unit: "km".to_owned(),
+            },
+            Value::Quantity {
+                amount: "1".to_owned(),
+                unit: "  ".to_owned(),
+            },
+            Value::Date { value: "2023-02-29".to_owned() },
+            Value::Datetime {
+                value: "not a timestamp".to_owned(),
+            },
+            Value::Url {
+                value: "relative/path".to_owned(),
+            },
+            Value::Coordinate {
+                latitude: "91".to_owned(),
+                longitude: "0".to_owned(),
+                precision: None,
+            },
+            Value::Coordinate {
+                latitude: "0".to_owned(),
+                longitude: "0".to_owned(),
+                precision: Some("0.00".to_owned()),
+            },
+        ];
+
+        for value in values {
+            let mut diagnostics = Diagnostics::default();
+            validate_value(Path::new("entity.yaml"), "Q1/S1", &value, &mut diagnostics);
+            assert_eq!(diagnostics.finish().len(), 1, "{value:?} should be invalid");
         }
     }
 }

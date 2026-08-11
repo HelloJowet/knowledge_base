@@ -18,6 +18,7 @@ pub enum ValueType {
     String,
     Integer,
     Decimal,
+    Quantity,
     Boolean,
     Date,
     Datetime,
