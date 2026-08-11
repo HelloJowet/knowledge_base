@@ -15,7 +15,7 @@ pub use entity_context::EntityContexts;
 pub use entity_type::EntityTypes;
 pub use error::Error;
 pub use property::Properties;
-pub use reference::References;
+pub use reference::{ReferenceDraft, ReferenceRegistrationOutcome, ReferenceRegistrationStatus, References};
 
 use std::path::{Path, PathBuf};
 

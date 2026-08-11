@@ -480,12 +480,15 @@ dependencies = [
 name = "knowledge-base-crud"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "fs2",
  "knowledge-base-models",
  "knowledge-base-validation",
+ "language-tags",
  "serde",
  "serde_yaml",
  "tempfile",
+ "url",
  "yaml-edit",
 ]
 

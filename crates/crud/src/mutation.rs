@@ -11,7 +11,7 @@ const LOCK_FILE: &str = ".knowledge-base.lock";
 #[derive(Debug)]
 pub(crate) struct FileEdit {
     pub(crate) path: PathBuf,
-    pub(crate) original: Vec<u8>,
+    pub(crate) original: Option<Vec<u8>>,
     pub(crate) replacement: Vec<u8>,
 }
 
@@ -117,7 +117,11 @@ fn stage_edit(edit: &FileEdit) -> Result<TempPath, Error> {
 
 fn commit_with(edits: &[FileEdit], mut persist: impl FnMut(TempPath, &Path) -> io::Result<()>) -> Result<(), Error> {
     for edit in edits {
-        let current = fs::read(&edit.path).map_err(|source| Error::Read { path: edit.path.clone(), source })?;
+        let current = match fs::read(&edit.path) {
+            Ok(current) => Some(current),
+            Err(source) if source.kind() == io::ErrorKind::NotFound => None,
+            Err(source) => return Err(Error::Read { path: edit.path.clone(), source }),
+        };
         if current != edit.original {
             return Err(Error::ConcurrentChange(edit.path.clone()));
         }
@@ -139,18 +143,22 @@ fn commit_with(edits: &[FileEdit], mut persist: impl FnMut(TempPath, &Path) -> i
 
 fn rollback(edits: &[FileEdit]) -> Result<(), Error> {
     for edit in edits.iter().rev() {
+        let Some(original) = &edit.original else {
+            match fs::remove_file(&edit.path) {
+                Ok(()) => continue,
+                Err(source) if source.kind() == io::ErrorKind::NotFound => continue,
+                Err(source) => return Err(Error::Write { path: edit.path.clone(), source }),
+            }
+        };
         let parent = edit.path.parent().expect("resource paths have a parent directory");
         let mut temporary = NamedTempFile::new_in(parent).map_err(|source| Error::Write {
             path: parent.to_path_buf(),
             source,
         })?;
-        temporary
-            .write_all(&edit.original)
-            .and_then(|_| temporary.as_file().sync_all())
-            .map_err(|source| Error::Write {
-                path: temporary.path().to_path_buf(),
-                source,
-            })?;
+        temporary.write_all(original).and_then(|_| temporary.as_file().sync_all()).map_err(|source| Error::Write {
+            path: temporary.path().to_path_buf(),
+            source,
+        })?;
         temporary.persist(&edit.path).map_err(|error| Error::Write {
             path: edit.path.clone(),
             source: error.error,
@@ -174,12 +182,12 @@ mod tests {
         let edits = vec![
             FileEdit {
                 path: first.clone(),
-                original: b"first original".to_vec(),
+                original: Some(b"first original".to_vec()),
                 replacement: b"first replacement".to_vec(),
             },
             FileEdit {
                 path: second.clone(),
-                original: b"second original".to_vec(),
+                original: Some(b"second original".to_vec()),
                 replacement: b"second replacement".to_vec(),
             },
         ];
@@ -207,7 +215,7 @@ mod tests {
         std::fs::write(&path, "changed externally").unwrap();
         let edits = [FileEdit {
             path: path.clone(),
-            original: b"original".to_vec(),
+            original: Some(b"original".to_vec()),
             replacement: b"replacement".to_vec(),
         }];
 
@@ -215,5 +223,57 @@ mod tests {
 
         assert!(matches!(error, Error::ConcurrentChange(changed) if changed == path));
         assert_eq!(std::fs::read_to_string(path).unwrap(), "changed externally");
+    }
+
+    #[test]
+    fn commit_detects_a_file_created_after_planning() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("R2.yaml");
+        std::fs::write(&path, "created externally").unwrap();
+        let edits = [FileEdit {
+            path: path.clone(),
+            original: None,
+            replacement: b"planned reference".to_vec(),
+        }];
+
+        let error = commit_with(&edits, |_, _| unreachable!()).unwrap_err();
+
+        assert!(matches!(error, Error::ConcurrentChange(changed) if changed == path));
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "created externally");
+    }
+
+    #[test]
+    fn commit_rolls_back_a_created_file_when_a_later_replacement_fails() {
+        let root = tempfile::tempdir().unwrap();
+        let created = root.path().join("R2.yaml");
+        let allocation = root.path().join("id_allocation.yaml");
+        std::fs::write(&allocation, "original allocation").unwrap();
+        let edits = vec![
+            FileEdit {
+                path: created.clone(),
+                original: None,
+                replacement: b"new reference".to_vec(),
+            },
+            FileEdit {
+                path: allocation.clone(),
+                original: Some(b"original allocation".to_vec()),
+                replacement: b"updated allocation".to_vec(),
+            },
+        ];
+        let mut calls = 0;
+
+        let error = commit_with(&edits, |temporary, path| {
+            calls += 1;
+            if calls == 2 {
+                Err(std::io::Error::other("injected failure"))
+            } else {
+                temporary.persist(path).map(|_| ()).map_err(|error| error.error)
+            }
+        })
+        .unwrap_err();
+
+        assert!(matches!(error, Error::Commit { .. }));
+        assert!(!created.exists());
+        assert_eq!(std::fs::read_to_string(allocation).unwrap(), "original allocation");
     }
 }

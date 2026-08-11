@@ -84,7 +84,7 @@ impl<'a> StatementPlanner<'a> {
                 let replacement = append_statements(source, &state.additions, &state.path)?;
                 Ok(FileEdit {
                     path: state.path,
-                    original: state.original,
+                    original: Some(state.original),
                     replacement: replacement.into_bytes(),
                 })
             })

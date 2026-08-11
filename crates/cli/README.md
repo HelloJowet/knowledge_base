@@ -72,6 +72,21 @@ statements:
 
 The CLI assigns statement identifiers. Each item must contain `entity`, `property`, `value`, and at least one reference. A batch is applied completely or not at all.
 
+Register a reference or reuse one with the exact same canonical URL:
+
+```sh
+knowledge-base reference register \
+  --url https://example.org/source \
+  --title 'Example source' \
+  --publisher 'Example Publisher' \
+  --publication-date 2026-08 \
+  --source-language en \
+  --archive-url https://archive.example.org/source
+knowledge-base reference register --url https://example.org/source --title 'Example source' --dry-run
+```
+
+The command records its current UTC time as `retrieved_at`. It never fetches a source; callers supply the canonical URL and metadata. Exact URL matches return an existing-reference outcome without changing metadata or identifier allocation. Registration and dry runs validate both the baseline and staged repository; their YAML output contains `status` (`previewed`, `registered`, or `existing`) and the `reference` identifier.
+
 ## Output and exit status
 
 Read commands write stored files to standard output exactly as written. Query and mutation commands produce deterministic YAML. Validation diagnostics and command errors are written to standard error.

@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -515,4 +516,91 @@ fn statement_apply_commits_multiple_entities_after_complete_validation() {
         .output()
         .expect("validate applied repository");
     assert!(validation.status.success(), "{}", String::from_utf8_lossy(&validation.stderr));
+}
+
+#[test]
+fn reference_register_previews_registers_and_reuses_exact_urls() {
+    let root = copied_fixture();
+    let reference_path = root.path().join("references/R2.yaml");
+    let allocation_path = root.path().join("id_allocation.yaml");
+    let before = fs::read(&allocation_path).unwrap();
+    let arguments = [
+        "reference",
+        "register",
+        "--url",
+        "https://example.org/new-source",
+        "--title",
+        "New source",
+        "--publisher",
+        "Example Publisher",
+        "--publication-date",
+        "2026-08",
+        "--source-language",
+        "en",
+        "--archive-url",
+        "https://archive.example.org/new-source",
+    ];
+
+    let preview = knowledge_base_command()
+        .args(arguments)
+        .arg("--dry-run")
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("preview reference registration");
+    assert!(preview.status.success(), "{}", String::from_utf8_lossy(&preview.stderr));
+    assert_eq!(String::from_utf8(preview.stdout).unwrap(), "status: previewed\nreference: R2\n");
+    assert!(!reference_path.exists());
+    assert_eq!(fs::read(&allocation_path).unwrap(), before);
+
+    let registered = knowledge_base_command()
+        .args(arguments)
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("register reference");
+    assert!(registered.status.success(), "{}", String::from_utf8_lossy(&registered.stderr));
+    assert_eq!(String::from_utf8(registered.stdout).unwrap(), "status: registered\nreference: R2\n");
+    let stored = fs::read_to_string(&reference_path).unwrap();
+    assert!(stored.contains("publisher: Example Publisher\n"));
+    assert!(stored.contains("publication_date: 2026-08\n"));
+    assert!(stored.contains("source_language: en\n"));
+    let timestamp = stored.lines().find_map(|line| line.strip_prefix("retrieved_at: ")).expect("retrieval timestamp");
+    assert!(DateTime::parse_from_rfc3339(timestamp).is_ok());
+
+    let reused = knowledge_base_command()
+        .args(arguments)
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("reuse reference");
+    assert!(reused.status.success(), "{}", String::from_utf8_lossy(&reused.stderr));
+    assert_eq!(String::from_utf8(reused.stdout).unwrap(), "status: existing\nreference: R2\n");
+    assert_eq!(fs::read_to_string(allocation_path).unwrap().matches("reference: 3").count(), 1);
+}
+
+#[test]
+fn reference_register_rejects_invalid_metadata_and_allocation_exhaustion_without_writes() {
+    let root = copied_fixture();
+    let invalid = knowledge_base_command()
+        .args(["reference", "register", "--url", "https://example.org/source", "--title", " "])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("register invalid reference");
+    assert!(!invalid.status.success());
+    assert!(String::from_utf8_lossy(&invalid.stderr).contains("title must not be empty"));
+    assert!(!root.path().join("references/R2.yaml").exists());
+
+    let allocation_path = root.path().join("id_allocation.yaml");
+    fs::write(
+        &allocation_path,
+        format!("version: 1\nnext:\n  entity: 3\n  property: 4\n  reference: {}\n  entity_type: 3\n", u64::MAX),
+    )
+    .unwrap();
+    let before = fs::read(&allocation_path).unwrap();
+    let exhausted = knowledge_base_command()
+        .args(["reference", "register", "--url", "https://example.org/source", "--title", "Source"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("register exhausted reference");
+    assert!(!exhausted.status.success());
+    assert!(String::from_utf8_lossy(&exhausted.stderr).contains("cannot allocate another reference identifier"));
+    assert_eq!(fs::read(&allocation_path).unwrap(), before);
 }

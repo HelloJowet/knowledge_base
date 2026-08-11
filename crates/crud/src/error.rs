@@ -8,6 +8,8 @@ use std::path::PathBuf;
 pub enum Error {
     Read { path: PathBuf, source: io::Error },
     ParseStatementBatch { path: PathBuf, source: serde_yaml::Error },
+    ParseReference { path: PathBuf, source: serde_yaml::Error },
+    ParseAllocation { path: PathBuf, source: serde_yaml::Error },
     InvalidRequest(String),
     ParseEntity { path: PathBuf, source: serde_yaml::Error },
     InvalidRepository(String),
@@ -25,6 +27,8 @@ impl fmt::Display for Error {
             Self::ParseStatementBatch { path, source } => {
                 write!(formatter, "cannot parse statement manifest {}: {source}", path.display())
             }
+            Self::ParseReference { path, source } => write!(formatter, "cannot parse reference {}: {source}", path.display()),
+            Self::ParseAllocation { path, source } => write!(formatter, "cannot parse identifier allocation {}: {source}", path.display()),
             Self::InvalidRequest(message) => write!(formatter, "invalid mutation request: {message}"),
             Self::ParseEntity { path, source } => {
                 write!(formatter, "cannot parse entity {}: {source}", path.display())
@@ -59,7 +63,9 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Read { source, .. } | Self::Write { source, .. } => Some(source),
-            Self::ParseStatementBatch { source, .. } | Self::ParseEntity { source, .. } => Some(source),
+            Self::ParseStatementBatch { source, .. } | Self::ParseReference { source, .. } | Self::ParseAllocation { source, .. } | Self::ParseEntity { source, .. } => {
+                Some(source)
+            }
             Self::InvalidRequest(_) | Self::InvalidRepository(_) | Self::Edit { .. } | Self::Validation(_) | Self::ConcurrentChange(_) | Self::Commit { .. } => None,
         }
     }
