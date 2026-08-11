@@ -23,6 +23,8 @@ let outcome = knowledge_base
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
+Statement manifests may include optional qualifiers (`property` plus a typed `value`). Repeating the same qualifier property/value within one statement is rejected. Duplicate detection compares the entity, property, typed value, and qualifiers without considering qualifier order or references.
+
 Equivalent read services are available through `entity_types()`, `properties()`, `references()`, and `entity_contexts()`. Reads return files exactly as stored.
 
 `entities().query()` requires at least one typed property/value filter and applies AND semantics to top-level statements. It scans the entity directory, sorts matches by numeric ID, and returns complete parsed entities with offset pagination metadata.

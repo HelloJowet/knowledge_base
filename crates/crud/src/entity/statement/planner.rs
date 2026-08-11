@@ -2,7 +2,7 @@ use super::edit::append_statements;
 use super::{StatementBatch, StatementResult, StatementResultStatus};
 use crate::mutation::FileEdit;
 use crate::{Error, resource};
-use knowledge_base_models::{Entity, EntityId, PropertyId, Statement, StatementId, Value};
+use knowledge_base_models::{Entity, EntityId, Statement, StatementId};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -29,7 +29,7 @@ struct EntityState {
     path: PathBuf,
     original: Vec<u8>,
     next_id: Option<u64>,
-    known: Vec<(PropertyId, Value, StatementId)>,
+    known: Vec<Statement>,
     additions: Vec<Statement>,
 }
 
@@ -47,20 +47,21 @@ impl<'a> StatementPlanner<'a> {
             let existing = state
                 .known
                 .iter()
-                .find(|(property, value, _)| property == &input.property && value == &input.value)
-                .map(|(_, _, statement)| statement.clone());
+                .find(|statement| statement.property == input.property && statement.value == input.value && qualifiers_match(&statement.qualifiers, &input.qualifiers))
+                .map(|statement| statement.id.clone());
             let (statement, status) = if let Some(statement) = existing {
                 (statement, StatementResultStatus::AlreadyPresent)
             } else {
                 let statement = allocate_statement_id(&input.entity, &mut state.next_id)?;
-                state.known.push((input.property.clone(), input.value.clone(), statement.clone()));
-                state.additions.push(Statement {
+                let addition = Statement {
                     id: statement.clone(),
                     property: input.property.clone(),
                     value: input.value.clone(),
-                    qualifiers: Vec::new(),
+                    qualifiers: input.qualifiers.clone(),
                     references: input.references.clone(),
-                });
+                };
+                state.known.push(addition.clone());
+                state.additions.push(addition);
                 (statement, StatementResultStatus::WouldAdd)
             };
             results.push(StatementResult {
@@ -109,7 +110,7 @@ impl<'a> StatementPlanner<'a> {
         let original = fs::read(&path).map_err(|source| Error::Read { path: path.clone(), source })?;
         let entity = serde_yaml::from_slice::<Entity>(&original).map_err(|source| Error::ParseEntity { path: path.clone(), source })?;
         let maximum = entity.statements.iter().map(|statement| statement.id.number()).max().unwrap_or(0);
-        let known = entity.statements.into_iter().map(|statement| (statement.property, statement.value, statement.id)).collect();
+        let known = entity.statements;
         Ok((
             id,
             EntityState {
@@ -121,6 +122,10 @@ impl<'a> StatementPlanner<'a> {
             },
         ))
     }
+}
+
+fn qualifiers_match(left: &[knowledge_base_models::Qualifier], right: &[knowledge_base_models::Qualifier]) -> bool {
+    left.len() == right.len() && left.iter().all(|qualifier| right.contains(qualifier))
 }
 
 fn allocate_statement_id(entity: &EntityId, next_id: &mut Option<u64>) -> Result<StatementId, Error> {
@@ -191,6 +196,37 @@ mod tests {
         assert_eq!(plan.edits.len(), 2);
         assert!(plan.edits[0].path.ends_with("Q1.yaml"));
         assert!(plan.edits[1].path.ends_with("Q2.yaml"));
+    }
+
+    #[test]
+    fn qualifiers_are_order_independent_for_duplicate_detection() {
+        let root = repository(
+            "id: Q1\nlabels: {}\nentity_types: []\nstatements:\n  - id: S3\n    property: P1\n    value: { type: integer, value: 7 }\n    qualifiers:\n      - property: P2\n        value: { type: date, value: 2024-01-01 }\n      - property: P3\n        value: { type: string, value: source }\n    references: [R1]\n",
+        );
+        let batch = batch(
+            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 7 }\n    qualifiers:\n      - property: P3\n        value: { type: string, value: source }\n      - property: P2\n        value: { type: date, value: 2024-01-01 }\n    references: [R2]\n",
+        );
+
+        let plan = StatementPlanner::new(root.path(), &batch).plan().unwrap();
+
+        assert_eq!(plan.results[0].status, StatementResultStatus::AlreadyPresent);
+        assert_eq!(plan.results[0].statement.as_str(), "S3");
+        assert!(plan.edits.is_empty());
+    }
+
+    #[test]
+    fn changed_qualifiers_create_a_distinct_statement() {
+        let root = repository(
+            "id: Q1\nlabels: {}\nentity_types: []\nstatements:\n  - id: S3\n    property: P1\n    value: { type: integer, value: 7 }\n    qualifiers:\n      - property: P2\n        value: { type: date, value: 2024-01-01 }\n    references: [R1]\n",
+        );
+        let batch = batch(
+            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 7 }\n    qualifiers:\n      - property: P2\n        value: { type: date, value: 2024-01-02 }\n    references: [R1]\n",
+        );
+
+        let plan = StatementPlanner::new(root.path(), &batch).plan().unwrap();
+
+        assert_eq!(plan.results[0].status, StatementResultStatus::WouldAdd);
+        assert_eq!(plan.results[0].statement.as_str(), "S4");
     }
 
     #[test]

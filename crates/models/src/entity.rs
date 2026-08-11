@@ -19,7 +19,7 @@ pub struct Statement {
     pub references: Vec<ReferenceId>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Qualifier {
     pub property: PropertyId,

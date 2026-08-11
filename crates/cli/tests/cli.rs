@@ -382,6 +382,35 @@ fn statement_apply_preserves_text_and_repeated_apply_is_rejected() {
 }
 
 #[test]
+fn statement_apply_serializes_qualifiers_and_repeated_apply_is_rejected() {
+    let root = copied_fixture();
+    let manifest = write_manifest(
+        root.path(),
+        "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 123456789 }\n    qualifiers:\n      - property: P2\n        value: { type: date, value: 2024-01-01 }\n    references: [R1]\n",
+    );
+    let entity_path = root.path().join("entities/Q1.yaml");
+
+    let applied = knowledge_base_command()
+        .args(["entity", "statement", "apply"])
+        .arg(&manifest)
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("apply qualified statement manifest");
+    assert!(applied.status.success(), "{}", String::from_utf8_lossy(&applied.stderr));
+    assert!(fs::read_to_string(&entity_path).unwrap().contains("    qualifiers:\n      - property: P2\n"));
+
+    let repeated = knowledge_base_command()
+        .args(["entity", "statement", "apply"])
+        .arg(&manifest)
+        .arg("--dry-run")
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("repeat qualified statement manifest");
+    assert!(!repeated.status.success());
+    assert!(String::from_utf8_lossy(&repeated.stdout).contains("status: already_present"));
+}
+
+#[test]
 fn duplicate_manifest_rows_are_reported_and_never_written() {
     let root = copied_fixture();
     let manifest = write_manifest(
@@ -418,8 +447,12 @@ fn invalid_statement_manifests_fail_without_results_or_writes() {
             "references must not be empty",
         ),
         (
-            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    references: [R1]\n    qualifiers: []\n",
-            "unknown field `qualifiers`",
+            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    qualifiers:\n      - property: P2\n        value: { type: date, value: 2024-01-01 }\n      - property: P2\n        value: { type: date, value: 2024-01-01 }\n    references: [R1]\n",
+            "contains duplicate property/value entry",
+        ),
+        (
+            "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 42 }\n    qualifiers:\n      - property: P2\n        value: { type: string, value: wrong-type }\n    references: [R1]\n",
+            "property P2 requires date values",
         ),
     ];
 

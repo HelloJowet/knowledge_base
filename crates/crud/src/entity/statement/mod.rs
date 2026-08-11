@@ -3,7 +3,7 @@ mod edit;
 mod planner;
 
 use crate::Error;
-use knowledge_base_models::{EntityId, PropertyId, ReferenceId, StatementId, Value};
+use knowledge_base_models::{EntityId, PropertyId, Qualifier, ReferenceId, StatementId, Value};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -34,6 +34,8 @@ pub struct StatementInput {
     pub entity: EntityId,
     pub property: PropertyId,
     pub value: Value,
+    #[serde(default)]
+    pub qualifiers: Vec<Qualifier>,
     pub references: Vec<ReferenceId>,
 }
 
@@ -86,13 +88,21 @@ fn validate_batch(batch: &StatementBatch) -> Result<(), Error> {
         if statement.references.is_empty() {
             return Err(Error::InvalidRequest(format!("statements[{}].references must not be empty", offset + 1)));
         }
+        for (qualifier_offset, qualifier) in statement.qualifiers.iter().enumerate() {
+            if statement.qualifiers[..qualifier_offset].contains(qualifier) {
+                return Err(Error::InvalidRequest(format!(
+                    "statements[{}].qualifiers contains duplicate property/value entry",
+                    offset + 1
+                )));
+            }
+        }
     }
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::StatementBatch;
+    use super::{StatementBatch, validate_batch};
 
     fn parses(value: &str) -> bool {
         serde_yaml::from_str::<StatementBatch>(value).is_ok()
@@ -110,7 +120,6 @@ statements:
         assert!(parses(valid));
 
         for invalid in [
-            valid.replace("    references: [R3]\n", "    references: [R3]\n    qualifiers: []\n"),
             valid.replace("statements:\n", "statements:\nunknown: true\n"),
             valid.replace("    property: P2\n", "    property: P2\n    property: P3\n"),
             valid.replace("entity: Q1", "entity: P1"),
@@ -118,5 +127,25 @@ statements:
         ] {
             assert!(!parses(&invalid), "invalid batch unexpectedly parsed:\n{invalid}");
         }
+
+        assert!(parses(&valid.replace("    references: [R3]\n", "    qualifiers: []\n    references: [R3]\n")));
+    }
+
+    #[test]
+    fn statement_batches_reject_duplicate_qualifiers() {
+        let source = r#"
+statements:
+  - entity: Q1
+    property: P1
+    value: { type: integer, value: 7 }
+    qualifiers:
+      - property: P2
+        value: { type: date, value: "2024-01-01" }
+      - property: P2
+        value: { type: date, value: "2024-01-01" }
+    references: [R1]
+"#;
+        let batch: StatementBatch = serde_yaml::from_str(source).expect("manifest parsing is separate from request validation");
+        assert!(validate_batch(&batch).is_err());
     }
 }

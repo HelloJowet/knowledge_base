@@ -1,5 +1,5 @@
 use crate::Error;
-use knowledge_base_models::{Entity, PropertyId, ReferenceId, Statement, StatementId, Value};
+use knowledge_base_models::{Entity, PropertyId, Qualifier, ReferenceId, Statement, StatementId, Value};
 use serde::Serialize;
 use std::path::Path;
 use std::str::FromStr;
@@ -56,7 +56,13 @@ struct StoredStatement<'a> {
     id: &'a StatementId,
     property: &'a PropertyId,
     value: &'a Value,
+    #[serde(skip_serializing_if = "slice_is_empty")]
+    qualifiers: &'a [Qualifier],
     references: &'a [ReferenceId],
+}
+
+fn slice_is_empty<T>(items: &[T]) -> bool {
+    items.is_empty()
 }
 
 fn render_statement_entries(statements: &[Statement], indentation: &str, path: &Path) -> Result<String, Error> {
@@ -66,6 +72,7 @@ fn render_statement_entries(statements: &[Statement], indentation: &str, path: &
             id: &statement.id,
             property: &statement.property,
             value: &statement.value,
+            qualifiers: &statement.qualifiers,
             references: &statement.references,
         };
         let generated = serde_yaml::to_string(&stored).map_err(|error| Error::Edit {
@@ -85,7 +92,7 @@ fn render_statement_entries(statements: &[Statement], indentation: &str, path: &
 #[cfg(test)]
 mod tests {
     use super::append_statements;
-    use knowledge_base_models::{PropertyId, ReferenceId, Statement, StatementId, Value};
+    use knowledge_base_models::{PropertyId, Qualifier, ReferenceId, Statement, StatementId, Value};
     use std::path::Path;
 
     fn statement(id: &str, value: i64) -> Statement {
@@ -115,5 +122,28 @@ mod tests {
         let replacement = append_statements(source, &[statement("S1", 2)], Path::new("Q1.yaml")).unwrap();
 
         assert!(replacement.starts_with("id: Q1\nlabels: {}\nentity_types: []\nstatements: \n  - id: S1\n"));
+    }
+
+    #[test]
+    fn appended_qualifiers_are_serialized_in_manifest_order() {
+        let source = "id: Q1\nlabels: {}\nentity_types: []\nstatements: []\n";
+        let mut appended = statement("S1", 2);
+        appended.qualifiers = vec![
+            Qualifier {
+                property: "P3".parse().unwrap(),
+                value: Value::String { value: "first".to_owned() },
+            },
+            Qualifier {
+                property: "P2".parse().unwrap(),
+                value: Value::Date { value: "2024-01-01".to_owned() },
+            },
+        ];
+
+        let replacement = append_statements(source, &[appended], Path::new("Q1.yaml")).unwrap();
+
+        let first = replacement.find("property: P3").unwrap();
+        let second = replacement.find("property: P2").unwrap();
+        assert!(replacement.contains("qualifiers:"));
+        assert!(first < second);
     }
 }
