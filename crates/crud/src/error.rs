@@ -1,3 +1,4 @@
+use knowledge_base_snapshot::Error as SnapshotError;
 use knowledge_base_validation::Diagnostic;
 use std::fmt;
 use std::io;
@@ -14,6 +15,7 @@ pub enum Error {
     ParseProperty { path: PathBuf, source: serde_yaml::Error },
     InvalidRequest(String),
     ParseEntity { path: PathBuf, source: serde_yaml::Error },
+    Snapshot(SnapshotError),
     InvalidRepository(String),
     InvalidSnapshot { path: PathBuf, message: String },
     Edit { path: PathBuf, message: String },
@@ -39,6 +41,7 @@ impl fmt::Display for Error {
                 write!(formatter, "cannot parse entity {}: {source}", path.display())
             }
             Self::InvalidRepository(message) => write!(formatter, "cannot query knowledge base: {message}"),
+            Self::Snapshot(source) => source.fmt(formatter),
             Self::InvalidSnapshot { path, message } => write!(formatter, "cannot load repository snapshot at {}: {message}", path.display()),
             Self::Edit { path, message } => {
                 write!(formatter, "cannot edit resource {}: {message}", path.display())
@@ -75,6 +78,7 @@ impl std::error::Error for Error {
             | Self::ParseEntityType { source, .. }
             | Self::ParseProperty { source, .. }
             | Self::ParseEntity { source, .. } => Some(source),
+            Self::Snapshot(source) => Some(source),
             Self::InvalidRequest(_)
             | Self::InvalidRepository(_)
             | Self::InvalidSnapshot { .. }

@@ -6,7 +6,6 @@ mod mutation;
 mod property;
 mod reference;
 mod resource;
-mod snapshot;
 
 pub use entity::{
     ApplyMode, ApplyStatementsOutcome, Entities, EntitiesPage, EntityFilter, EntityRelationship, EntityRelationshipsPage, RelatedEntity, RelationshipDirection, StatementBatch,
@@ -15,9 +14,9 @@ pub use entity::{
 pub use entity_context::EntityContexts;
 pub use entity_type::EntityTypes;
 pub use error::Error;
+pub use knowledge_base_snapshot::RepositorySnapshot;
 pub use property::Properties;
 pub use reference::{ReferenceDraft, ReferenceRegistrationOutcome, ReferenceRegistrationStatus, References};
-pub use snapshot::RepositorySnapshot;
 
 use knowledge_base_validation::{AdditionalValidator, Diagnostic, validate_repository_with};
 use std::fmt;
@@ -67,7 +66,7 @@ impl KnowledgeBase {
     /// run generic or configured semantic validators. Call [`Self::validate`]
     /// when semantic validation is required.
     pub fn snapshot(&self) -> Result<RepositorySnapshot, Error> {
-        RepositorySnapshot::load(&self.root)
+        RepositorySnapshot::load(&self.root).map_err(Error::Snapshot)
     }
 
     pub(crate) fn additional_validators(&self) -> &[Arc<dyn AdditionalValidator>] {

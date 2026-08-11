@@ -36,12 +36,15 @@ fn multiple_diagnostics_are_complete_and_deterministic() {
 }
 
 #[test]
-fn additional_validators_all_run_and_their_diagnostics_are_sorted_with_built_ins() {
-    let root = tempfile::tempdir().expect("temporary directory");
+fn additional_validators_share_a_snapshot_and_their_diagnostics_are_sorted_with_built_ins() {
+    let root = fixture("valid/minimal");
     let calls = Arc::new(Mutex::new(Vec::new()));
     let first_calls = Arc::clone(&calls);
-    let first = move |path: &Path| {
-        first_calls.lock().unwrap().push(("first", path.to_path_buf()));
+    let first = move |context: &knowledge_base_validation::ValidationContext<'_>| {
+        first_calls
+            .lock()
+            .unwrap()
+            .push(("first", context.repository_root().to_path_buf(), context.snapshot() as *const _ as usize));
         vec![Diagnostic {
             layer: ValidationLayer::Domain,
             path: PathBuf::from("z-domain.yaml"),
@@ -51,8 +54,11 @@ fn additional_validators_all_run_and_their_diagnostics_are_sorted_with_built_ins
         }]
     };
     let second_calls = Arc::clone(&calls);
-    let second = move |path: &Path| {
-        second_calls.lock().unwrap().push(("second", path.to_path_buf()));
+    let second = move |context: &knowledge_base_validation::ValidationContext<'_>| {
+        second_calls
+            .lock()
+            .unwrap()
+            .push(("second", context.repository_root().to_path_buf(), context.snapshot() as *const _ as usize));
         vec![Diagnostic {
             layer: ValidationLayer::Domain,
             path: PathBuf::from("a-domain.yaml"),
@@ -63,19 +69,37 @@ fn additional_validators_all_run_and_their_diagnostics_are_sorted_with_built_ins
     };
     let validators: [&dyn AdditionalValidator; 2] = [&first, &second];
 
-    let diagnostics = validate_repository_with(root.path(), validators);
+    let diagnostics = validate_repository_with(&root, validators);
 
     assert_eq!(
-        calls.lock().unwrap().as_slice(),
-        [("first", root.path().to_path_buf()), ("second", root.path().to_path_buf())]
+        calls.lock().unwrap().iter().map(|(name, path, _)| (*name, path.clone())).collect::<Vec<_>>(),
+        [("first", root.clone()), ("second", root.clone())]
     );
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.layer == ValidationLayer::Schema));
+    assert_eq!(calls.lock().unwrap()[0].2, calls.lock().unwrap()[1].2);
+    assert!(!diagnostics.iter().any(|diagnostic| diagnostic.layer == ValidationLayer::Schema));
     let domain_paths = diagnostics
         .iter()
         .filter(|diagnostic| diagnostic.layer == ValidationLayer::Domain)
         .map(|diagnostic| diagnostic.path.clone())
         .collect::<Vec<_>>();
     assert_eq!(domain_paths, [PathBuf::from("a-domain.yaml"), PathBuf::from("z-domain.yaml")]);
+}
+
+#[test]
+fn snapshot_loading_failure_skips_domain_validators_without_duplicate_diagnostics() {
+    let root = tempfile::tempdir().expect("temporary directory");
+    let calls = Arc::new(Mutex::new(0));
+    let validator_calls = Arc::clone(&calls);
+    let validator = move |_context: &knowledge_base_validation::ValidationContext<'_>| {
+        *validator_calls.lock().unwrap() += 1;
+        Vec::new()
+    };
+
+    let diagnostics = validate_repository_with(root.path(), [&validator as &dyn AdditionalValidator]);
+
+    assert_eq!(*calls.lock().unwrap(), 0);
+    assert!(diagnostics.len() > 1);
+    assert!(diagnostics.iter().all(|diagnostic| !diagnostic.message.contains("shared repository snapshot")));
 }
 
 #[test]

@@ -73,9 +73,12 @@ fn configured_validators_run_against_the_baseline_and_staged_repository_for_prev
     let root = copied_fixture();
     let calls = Arc::new(Mutex::new(Vec::new()));
     let validator_calls = Arc::clone(&calls);
-    let validator: Arc<dyn AdditionalValidator> = Arc::new(move |path: &Path| -> Vec<Diagnostic> {
-        let has_planned_statement = fs::read_to_string(path.join("entities/Q1.yaml")).unwrap().contains("123456789");
-        validator_calls.lock().unwrap().push((path.to_path_buf(), has_planned_statement));
+    let validator: Arc<dyn AdditionalValidator> = Arc::new(move |context: &knowledge_base_validation::ValidationContext<'_>| -> Vec<Diagnostic> {
+        let has_planned_statement = context.snapshot().entities()[&"Q1".parse().unwrap()]
+            .statements
+            .iter()
+            .any(|statement| matches!(statement.value, knowledge_base_models::Value::Integer { value: 123456789 }));
+        validator_calls.lock().unwrap().push((context.repository_root().to_path_buf(), has_planned_statement));
         Vec::new()
     });
     let knowledge_base = KnowledgeBase::with_additional_validators(root.path(), [validator]);
@@ -94,8 +97,12 @@ fn a_staged_domain_diagnostic_rejects_preview_and_commit_without_changing_files(
     let root = copied_fixture();
     let entity_path = root.path().join("entities/Q1.yaml");
     let before = fs::read(&entity_path).unwrap();
-    let validator: Arc<dyn AdditionalValidator> = Arc::new(|path: &Path| {
-        if fs::read_to_string(path.join("entities/Q1.yaml")).unwrap().contains("123456789") {
+    let validator: Arc<dyn AdditionalValidator> = Arc::new(|context: &knowledge_base_validation::ValidationContext<'_>| {
+        if context.snapshot().entities()[&"Q1".parse().unwrap()]
+            .statements
+            .iter()
+            .any(|statement| matches!(statement.value, knowledge_base_models::Value::Integer { value: 123456789 }))
+        {
             vec![Diagnostic {
                 layer: ValidationLayer::Domain,
                 path: PathBuf::from("entities/Q1.yaml"),
@@ -121,8 +128,8 @@ fn every_configured_validator_runs_on_an_invalid_baseline() {
     let root = copied_fixture();
     let calls = Arc::new(Mutex::new(Vec::new()));
     let first_calls = Arc::clone(&calls);
-    let first: Arc<dyn AdditionalValidator> = Arc::new(move |path: &Path| {
-        first_calls.lock().unwrap().push(("first", path.to_path_buf()));
+    let first: Arc<dyn AdditionalValidator> = Arc::new(move |context: &knowledge_base_validation::ValidationContext<'_>| {
+        first_calls.lock().unwrap().push(("first", context.repository_root().to_path_buf()));
         vec![Diagnostic {
             layer: ValidationLayer::Domain,
             path: PathBuf::from("domain.yaml"),
@@ -132,8 +139,8 @@ fn every_configured_validator_runs_on_an_invalid_baseline() {
         }]
     });
     let second_calls = Arc::clone(&calls);
-    let second: Arc<dyn AdditionalValidator> = Arc::new(move |path: &Path| {
-        second_calls.lock().unwrap().push(("second", path.to_path_buf()));
+    let second: Arc<dyn AdditionalValidator> = Arc::new(move |context: &knowledge_base_validation::ValidationContext<'_>| {
+        second_calls.lock().unwrap().push(("second", context.repository_root().to_path_buf()));
         vec![Diagnostic {
             layer: ValidationLayer::Domain,
             path: PathBuf::from("domain.yaml"),

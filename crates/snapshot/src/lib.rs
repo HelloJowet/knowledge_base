@@ -1,13 +1,76 @@
-use crate::Error;
+//! Read-only snapshots of canonical knowledge-base repository resources.
+//!
+//! Loading verifies repository structure and YAML deserialization, but does not
+//! perform generic or domain semantic validation.
+
+#![forbid(unsafe_code)]
+
 use knowledge_base_models::{Entity, EntityId, EntityType, EntityTypeId, IdAllocation, Property, PropertyId, Reference, ReferenceId};
 use std::collections::BTreeMap;
+use std::fmt;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
+
+/// An error loading a structured repository resource.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Error {
+    Read { path: PathBuf, source: io::Error },
+    ParseEntity { path: PathBuf, source: serde_yaml::Error },
+    ParseEntityType { path: PathBuf, source: serde_yaml::Error },
+    ParseProperty { path: PathBuf, source: serde_yaml::Error },
+    ParseReference { path: PathBuf, source: serde_yaml::Error },
+    ParseAllocation { path: PathBuf, source: serde_yaml::Error },
+    InvalidSnapshot { path: PathBuf, message: String },
+}
+
+impl Error {
+    /// The absolute or caller-provided path associated with this failure.
+    pub fn path(&self) -> &Path {
+        match self {
+            Self::Read { path, .. }
+            | Self::ParseEntity { path, .. }
+            | Self::ParseEntityType { path, .. }
+            | Self::ParseProperty { path, .. }
+            | Self::ParseReference { path, .. }
+            | Self::ParseAllocation { path, .. }
+            | Self::InvalidSnapshot { path, .. } => path,
+        }
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Read { path, source } => write!(formatter, "cannot read {}: {source}", path.display()),
+            Self::ParseEntity { path, source } => write!(formatter, "cannot parse entity {}: {source}", path.display()),
+            Self::ParseEntityType { path, source } => write!(formatter, "cannot parse entity type {}: {source}", path.display()),
+            Self::ParseProperty { path, source } => write!(formatter, "cannot parse property {}: {source}", path.display()),
+            Self::ParseReference { path, source } => write!(formatter, "cannot parse reference {}: {source}", path.display()),
+            Self::ParseAllocation { path, source } => write!(formatter, "cannot parse identifier allocation {}: {source}", path.display()),
+            Self::InvalidSnapshot { path, message } => write!(formatter, "cannot load repository snapshot at {}: {message}", path.display()),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Read { source, .. } => Some(source),
+            Self::ParseEntity { source, .. }
+            | Self::ParseEntityType { source, .. }
+            | Self::ParseProperty { source, .. }
+            | Self::ParseReference { source, .. }
+            | Self::ParseAllocation { source, .. } => Some(source),
+            Self::InvalidSnapshot { .. } => None,
+        }
+    }
+}
 
 /// A complete, immutable, structurally valid view of a knowledge-base repository.
 ///
-/// Resources are indexed by their identifiers and iterate in identifier order.
-/// Loading a snapshot does not perform generic or domain semantic validation.
+/// Resources are indexed by identifiers and iterate in identifier order.
 #[derive(Clone, Debug)]
 pub struct RepositorySnapshot {
     entities: BTreeMap<EntityId, Entity>,
@@ -18,7 +81,9 @@ pub struct RepositorySnapshot {
 }
 
 impl RepositorySnapshot {
-    pub(crate) fn load(root: &Path) -> Result<Self, Error> {
+    /// Loads all managed structured resources from `root`.
+    pub fn load(root: impl AsRef<Path>) -> Result<Self, Error> {
+        let root = root.as_ref();
         Ok(Self {
             entities: load_resources(root, "entities", |path, source| {
                 serde_yaml::from_slice(source).map_err(|source| Error::ParseEntity { path, source })
@@ -54,10 +119,9 @@ impl RepositorySnapshot {
 }
 
 trait Identified {
-    type Id: Ord + Clone + std::fmt::Display;
+    type Id: Ord + Clone + fmt::Display;
     fn id(&self) -> &Self::Id;
 }
-
 impl Identified for Entity {
     type Id = EntityId;
     fn id(&self) -> &Self::Id {
@@ -106,13 +170,11 @@ fn load_resources<T: Identified>(root: &Path, directory: &str, parse: impl Fn(Pa
         paths.push(path);
     }
     paths.sort();
-
     let mut resources = BTreeMap::new();
     for path in paths {
         let source = fs::read(&path).map_err(|source| Error::Read { path: path.clone(), source })?;
         let resource = parse(path.clone(), &source)?;
-        let file_id = path.file_stem().and_then(|stem| stem.to_str());
-        if file_id != Some(resource.id().to_string().as_str()) {
+        if path.file_stem().and_then(|stem| stem.to_str()) != Some(resource.id().to_string().as_str()) {
             return Err(Error::InvalidSnapshot {
                 path,
                 message: format!("filename must match declared identifier {}", resource.id()),

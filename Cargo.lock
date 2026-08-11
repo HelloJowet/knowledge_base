@@ -463,7 +463,7 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-cli"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "clap",
@@ -478,11 +478,12 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-crud"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "fs2",
  "knowledge-base-models",
+ "knowledge-base-snapshot",
  "knowledge-base-validation",
  "language-tags",
  "serde",
@@ -494,18 +495,27 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-models"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_yaml",
 ]
 
 [[package]]
+name = "knowledge-base-snapshot"
+version = "0.3.0"
+dependencies = [
+ "knowledge-base-models",
+ "serde_yaml",
+]
+
+[[package]]
 name = "knowledge-base-validation"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "knowledge-base-models",
+ "knowledge-base-snapshot",
  "language-tags",
  "pulldown-cmark",
  "regex",

@@ -1,0 +1,16 @@
+[package]
+name = "knowledge-base-snapshot"
+description = "Read-only repository snapshots for the file-based knowledge base"
+readme = "README.md"
+keywords = ["knowledge-base", "yaml", "filesystem", "repository"]
+categories = ["filesystem"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+knowledge-base-models.workspace = true
+serde_yaml.workspace = true

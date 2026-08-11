@@ -63,14 +63,15 @@ A domain CLI can make its rules mandatory for both direct validation and every m
 
 ```rust
 use knowledge_base_crud::KnowledgeBase;
-use knowledge_base_validation::{AdditionalValidator, Diagnostic, ValidationLayer};
-use std::path::{Path, PathBuf};
+use knowledge_base_validation::{AdditionalValidator, Diagnostic, ValidationContext, ValidationLayer};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 struct TransportValidator;
 
 impl AdditionalValidator for TransportValidator {
-    fn validate(&self, _repository: &Path) -> Vec<Diagnostic> {
+    fn validate(&self, context: &ValidationContext<'_>) -> Vec<Diagnostic> {
+        let _entity = context.snapshot().entities().get(&"Q1".parse().unwrap());
         vec![Diagnostic {
             layer: ValidationLayer::Domain,
             path: PathBuf::from("entities/Q1.yaml"),
@@ -89,6 +90,6 @@ let diagnostics = knowledge_base.validate();
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Configured validators run in registration order against the locked baseline and the complete staged result. Any diagnostic rejects the mutation before files change; preview mode uses the same staged validation path. The generic `knowledge-base` CLI does not configure domain validators—domain CLIs must create their own configured `KnowledgeBase` instance.
+Configured validators run in registration order against the locked baseline and the complete staged result. Each pass supplies every validator one shared immutable snapshot; validators are skipped when that snapshot cannot be loaded and generic schema diagnostics already describe the failure. Any diagnostic rejects the mutation before files change; preview mode uses the same staged validation path. The generic `knowledge-base` CLI does not configure domain validators—domain CLIs must create their own configured `KnowledgeBase` instance.
 
 `references().register()` accepts an ID-less `ReferenceDraft`. It reuses a reference only when its stored URL exactly equals the draft URL; otherwise it allocates the next `R<n>` identifier and updates `id_allocation.yaml` in the same mutation. Draft metadata is validated before the lock is acquired, and both the baseline and fully staged repositories are validated under the lock. Preview mode performs the same checks without writing files.

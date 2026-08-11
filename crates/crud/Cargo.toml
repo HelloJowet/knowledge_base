@@ -15,6 +15,7 @@ repository.workspace = true
 chrono.workspace = true
 fs2.workspace = true
 knowledge-base-models.workspace = true
+knowledge-base-snapshot.workspace = true
 knowledge-base-validation.workspace = true
 language-tags.workspace = true
 serde.workspace = true
@@ -22,3 +23,6 @@ serde_yaml.workspace = true
 tempfile.workspace = true
 url.workspace = true
 yaml-edit.workspace = true
+
+[dev-dependencies]
+knowledge-base-snapshot.workspace = true

@@ -1,5 +1,6 @@
 use knowledge_base_crud::{Error, KnowledgeBase};
 use knowledge_base_models::{EntityId, PropertyId};
+use knowledge_base_snapshot::Error as SnapshotError;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -43,7 +44,7 @@ fn snapshot_rejects_non_yaml_managed_resource() {
 
     let error = KnowledgeBase::new(repository.path()).snapshot().expect_err("non-YAML file is rejected");
 
-    assert!(matches!(error, Error::InvalidSnapshot { path: error_path, .. } if error_path == path));
+    assert!(matches!(error, Error::Snapshot(SnapshotError::InvalidSnapshot { path: error_path, .. }) if error_path == path));
 }
 
 #[test]
@@ -55,5 +56,5 @@ fn snapshot_rejects_filename_identifier_mismatch() {
 
     let error = KnowledgeBase::new(repository.path()).snapshot().expect_err("mismatched filename is rejected");
 
-    assert!(matches!(error, Error::InvalidSnapshot { path: error_path, .. } if error_path == path));
+    assert!(matches!(error, Error::Snapshot(SnapshotError::InvalidSnapshot { path: error_path, .. }) if error_path == path));
 }
