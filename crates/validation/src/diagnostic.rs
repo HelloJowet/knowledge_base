@@ -1,5 +1,8 @@
 use std::fmt;
+use std::path::Path;
 use std::path::PathBuf;
+
+use crate::input::Loaded;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ValidationLayer {
@@ -41,5 +44,45 @@ impl fmt::Display for Diagnostic {
             write!(formatter, " [{identifier}]")?;
         }
         write!(formatter, " {}", self.message)
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct Diagnostics(Vec<Diagnostic>);
+
+impl Diagnostics {
+    pub(crate) fn push(&mut self, layer: ValidationLayer, path: PathBuf, line: Option<usize>, identifier: Option<String>, message: impl Into<String>) {
+        self.0.push(Diagnostic {
+            layer,
+            path,
+            line,
+            identifier,
+            message: message.into(),
+        });
+    }
+
+    pub(crate) fn schema<T>(&mut self, item: &Loaded<T>, identifier: &str, message: impl Into<String>) {
+        self.push(ValidationLayer::Schema, item.path.clone(), None, Some(identifier.to_owned()), message);
+    }
+
+    pub(crate) fn ontology<T>(&mut self, item: &Loaded<T>, identifier: &str, message: impl Into<String>) {
+        self.push(ValidationLayer::Ontology, item.path.clone(), None, Some(identifier.to_owned()), message);
+    }
+
+    pub(crate) fn provenance(&mut self, path: &Path, line: Option<usize>, identifier: &str, message: impl Into<String>) {
+        self.push(ValidationLayer::Provenance, path.to_path_buf(), line, Some(identifier.to_owned()), message);
+    }
+
+    pub(crate) fn finish(mut self) -> Vec<Diagnostic> {
+        self.0.sort_by(|left, right| {
+            (&left.path, left.line.unwrap_or(usize::MAX), &left.identifier, &left.message, left.layer).cmp(&(
+                &right.path,
+                right.line.unwrap_or(usize::MAX),
+                &right.identifier,
+                &right.message,
+                right.layer,
+            ))
+        });
+        self.0
     }
 }
