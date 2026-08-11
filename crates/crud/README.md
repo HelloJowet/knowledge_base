@@ -2,6 +2,8 @@
 
 Typed filesystem access for a file-based knowledge base. `knowledge-base-crud` is the filesystem-backed CRUD layer; its public API will expand to complete CRUD for every resource. This release exposes the read, query, and mutation operations documented below. Operations are grouped by resource while `KnowledgeBase` remains the entry point:
 
+The crate operates only on the canonical 0.2.0 schema and does not migrate or parse the legacy transit-owned schema. Migrate existing repositories before using it; see the repository [migration guide](../../MIGRATION.md).
+
 ```rust
 use knowledge_base_crud::{ApplyMode, EntityFilter, KnowledgeBase, ReferenceDraft, StatementBatch};
 use knowledge_base_models::{EntityId, Value};

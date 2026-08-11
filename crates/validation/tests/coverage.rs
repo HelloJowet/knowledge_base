@@ -204,6 +204,13 @@ fn entity_context_fixture_keeps_known_gaps_visible() {
                 "entity_context/Q1.md",
                 Some(1),
                 Some("Q1"),
+                "footnote \"R2\" has no definition",
+            ),
+            diagnostic(
+                ValidationLayer::Provenance,
+                "entity_context/Q1.md",
+                Some(1),
+                Some("Q1"),
                 "footnote \"R99\" cites a reference that does not exist",
             ),
             diagnostic(
@@ -219,13 +226,6 @@ fn entity_context_fixture_keeps_known_gaps_visible() {
                 Some(3),
                 Some("Q1"),
                 "footnote \"R99\" must contain exactly one link to ../references/R99.yaml",
-            ),
-            diagnostic(
-                ValidationLayer::Provenance,
-                "entity_context/Q1.md",
-                Some(1),
-                Some("Q1"),
-                "footnote \"R2\" has no definition",
             ),
             diagnostic(ValidationLayer::Provenance, "entity_context/Q1.md", Some(5), Some("Q1"), "footnote \"R1\" is unused"),
             diagnostic(

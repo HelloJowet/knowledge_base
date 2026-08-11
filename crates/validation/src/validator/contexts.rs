@@ -3,8 +3,12 @@ use crate::diagnostic::Diagnostics;
 use crate::input::{ContextDocument, Loaded};
 use knowledge_base_models::{Reference, ReferenceId};
 use pulldown_cmark::{Event, Options, Parser, Tag};
+use regex::Regex;
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::sync::LazyLock;
+
+static FOOTNOTE_REFERENCE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[\^([^\]\r\n]+)\]").expect("valid regex"));
 
 #[derive(Default)]
 struct FootnoteDefinition {
@@ -30,6 +34,14 @@ fn validate_context(context: &ContextDocument, entity_exists: bool, references: 
 
     let mut definitions = BTreeMap::<String, Vec<FootnoteDefinition>>::new();
     let mut references_used = BTreeMap::<String, usize>::new();
+    for capture in FOOTNOTE_REFERENCE.captures_iter(&context.source) {
+        let marker = capture.get(0).expect("footnote marker capture");
+        if context.source.as_bytes().get(marker.end()) == Some(&b':') {
+            continue;
+        }
+        let label = capture.get(1).expect("footnote label capture");
+        references_used.entry(label.as_str().to_owned()).or_insert_with(|| line_at(&context.source, marker.start()));
+    }
     let mut current_definition: Option<(String, FootnoteDefinition)> = None;
     let options = Options::ENABLE_FOOTNOTES;
     for (event, range) in Parser::new_ext(&context.source, options).into_offset_iter() {
@@ -56,15 +68,22 @@ fn validate_context(context: &ContextDocument, entity_exists: bool, references: 
     }
 
     for (label, line) in &references_used {
-        parse_reference_label(label, &context.path, *line, &owner, references, diagnostics);
         match definitions.get(label).map(Vec::len).unwrap_or_default() {
             0 => diagnostics.provenance(&context.path, Some(*line), &owner, format!("footnote {label:?} has no definition")),
-            1 => {}
-            count => diagnostics.provenance(&context.path, Some(*line), &owner, format!("footnote {label:?} has {count} definitions")),
+            1 => {
+                parse_reference_label(label, &context.path, *line, &owner, references, diagnostics);
+            }
+            count => {
+                parse_reference_label(label, &context.path, *line, &owner, references, diagnostics);
+                diagnostics.provenance(&context.path, Some(*line), &owner, format!("footnote {label:?} has {count} definitions"));
+            }
         }
     }
 
     for (label, entries) in definitions {
+        if !references_used.contains_key(&label) {
+            diagnostics.provenance(&context.path, Some(entries[0].line), &owner, format!("footnote {label:?} is unused"));
+        }
         if entries.len() > 1 && !references_used.contains_key(&label) {
             diagnostics.provenance(
                 &context.path,

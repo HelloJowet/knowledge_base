@@ -32,9 +32,10 @@ KNOWLEDGE_BASE_PATH=/path/to/knowledge-base target/release/knowledge-base valida
 - [Query entities](query.md) with `entity query`
 - [Query direct relationships](relationships.md) with `entity relationships`
 - [Apply statement manifests](statements.md) with `entity statement apply`
+- [Register references](references.md) with `reference register`
 
 ## Output and exit status
 
 Read commands write stored files to standard output exactly as written. Query and mutation commands produce deterministic YAML. Validation diagnostics and command errors are written to standard error.
 
-Commands exit unsuccessfully when `KNOWLEDGE_BASE_PATH` is unset or empty, a requested file cannot be read, a query cannot parse the entity collection, validation diagnostics are found, or a statement batch has a `not_applied` outcome. Consult a command's page for its additional validation and failure behavior.
+Commands exit unsuccessfully when `KNOWLEDGE_BASE_PATH` is unset or empty, a requested file cannot be read, a query cannot parse the entity collection, validation diagnostics are found, or a mutation cannot be applied. Consult a command's page for its additional validation and failure behavior.

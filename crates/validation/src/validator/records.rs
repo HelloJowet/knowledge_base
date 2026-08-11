@@ -1,5 +1,5 @@
 use super::Validator;
-use super::values::{valid_partial_date, validate_localized_map, validate_nonempty_metadata, validate_url};
+use super::values::{LocalizedMapRules, valid_partial_date, validate_localized_map, validate_nonempty_metadata, validate_url};
 use crate::diagnostic::Diagnostics;
 use crate::input::Loaded;
 use chrono::DateTime;
@@ -27,8 +27,30 @@ pub(super) fn validate(validator: &mut Validator<'_>) {
 fn validate_entity_types(items: &[Loaded<EntityType>], references: &BTreeMap<ReferenceId, &Loaded<Reference>>, diagnostics: &mut Diagnostics) {
     for item in items {
         let id = item.value.id.to_string();
-        validate_localized_map(&item.path, &id, "labels", &item.value.labels, true, false, references, diagnostics);
-        validate_localized_map(&item.path, &id, "descriptions", &item.value.descriptions, false, false, references, diagnostics);
+        validate_localized_map(
+            &item.path,
+            &id,
+            "labels",
+            &item.value.labels,
+            LocalizedMapRules {
+                required: true,
+                references_required: false,
+            },
+            references,
+            diagnostics,
+        );
+        validate_localized_map(
+            &item.path,
+            &id,
+            "descriptions",
+            &item.value.descriptions,
+            LocalizedMapRules {
+                required: false,
+                references_required: false,
+            },
+            references,
+            diagnostics,
+        );
     }
 }
 
@@ -41,8 +63,30 @@ fn validate_properties(validator: &mut Validator<'_>) {
     for item in &validator.repository.properties {
         let property = &item.value;
         let id = property.id.to_string();
-        validate_localized_map(&item.path, &id, "labels", &property.labels, true, false, references, diagnostics);
-        validate_localized_map(&item.path, &id, "descriptions", &property.descriptions, false, false, references, diagnostics);
+        validate_localized_map(
+            &item.path,
+            &id,
+            "labels",
+            &property.labels,
+            LocalizedMapRules {
+                required: true,
+                references_required: false,
+            },
+            references,
+            diagnostics,
+        );
+        validate_localized_map(
+            &item.path,
+            &id,
+            "descriptions",
+            &property.descriptions,
+            LocalizedMapRules {
+                required: false,
+                references_required: false,
+            },
+            references,
+            diagnostics,
+        );
 
         for (namespace, identifiers) in &property.external_ids {
             if namespace.trim().is_empty() {

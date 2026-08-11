@@ -1,5 +1,5 @@
 use super::Validator;
-use super::values::{validate_localized_map, validate_optional_provenance, validate_provenance, validate_url, validate_value, value_type_name};
+use super::values::{LocalizedMapRules, validate_localized_map, validate_optional_provenance, validate_provenance, validate_url, validate_value, value_type_name};
 use crate::diagnostic::Diagnostics;
 use crate::input::Loaded;
 use knowledge_base_models::{Cardinality, Entity, EntityId, Property, PropertyId, Value};
@@ -15,8 +15,30 @@ pub(super) fn validate(validator: &mut Validator<'_>) {
     for item in &validator.repository.entities {
         let entity = &item.value;
         let id = entity.id.to_string();
-        validate_localized_map(&item.path, &id, "labels", &entity.labels, true, true, references, diagnostics);
-        validate_localized_map(&item.path, &id, "descriptions", &entity.descriptions, false, true, references, diagnostics);
+        validate_localized_map(
+            &item.path,
+            &id,
+            "labels",
+            &entity.labels,
+            LocalizedMapRules {
+                required: true,
+                references_required: true,
+            },
+            references,
+            diagnostics,
+        );
+        validate_localized_map(
+            &item.path,
+            &id,
+            "descriptions",
+            &entity.descriptions,
+            LocalizedMapRules {
+                required: false,
+                references_required: true,
+            },
+            references,
+            diagnostics,
+        );
 
         if entity.entity_types.is_empty() {
             diagnostics.schema(item, &id, "entity_types must not be empty");

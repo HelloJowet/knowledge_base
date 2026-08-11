@@ -27,6 +27,10 @@ A file-based knowledge base becomes harder to validate, query, and update concur
 
 See the [data model](docs/data-model.md) for the file format. The example in [`fixtures/valid/minimal`](fixtures/valid/minimal) is a small knowledge base you can copy and adapt.
 
+## Compatibility
+
+Version 0.2.0 establishes the supported generic schema and public crate surface. It intentionally does not parse the legacy transit-owned schema. Consumers with existing data must migrate it to this canonical layout; see the [migration guide](MIGRATION.md) and [changelog](CHANGELOG.md).
+
 ## Command-line interface
 
 The `knowledge-base` executable validates, reads, queries, and updates a knowledge base. Install it from crates.io with:

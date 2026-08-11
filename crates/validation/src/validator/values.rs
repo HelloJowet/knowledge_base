@@ -11,6 +11,12 @@ use url::Url;
 
 static DECIMAL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$").expect("valid regex"));
 
+#[derive(Clone, Copy)]
+pub(super) struct LocalizedMapRules {
+    pub required: bool,
+    pub references_required: bool,
+}
+
 pub(super) fn validate_nonempty_metadata<T>(item: &Loaded<T>, id: &str, field: &str, value: &str, diagnostics: &mut Diagnostics) -> bool {
     if value.trim().is_empty() {
         diagnostics.schema(item, id, format!("{field} must not be empty"));
@@ -80,12 +86,11 @@ pub(super) fn validate_localized_map(
     owner: &str,
     field: &str,
     values: &LocalizedMap,
-    required: bool,
-    references_required: bool,
+    rules: LocalizedMapRules,
     references: &BTreeMap<ReferenceId, &Loaded<Reference>>,
     diagnostics: &mut Diagnostics,
 ) {
-    if required && values.is_empty() {
+    if rules.required && values.is_empty() {
         diagnostics.push(
             ValidationLayer::Schema,
             path.to_path_buf(),
@@ -114,7 +119,16 @@ pub(super) fn validate_localized_map(
                 format!("{field} contains locale {locale:?} more than once ignoring case"),
             );
         }
-        if references_required {
+        if value.text.trim().is_empty() {
+            diagnostics.push(
+                ValidationLayer::Schema,
+                path.to_path_buf(),
+                None,
+                Some(owner.to_owned()),
+                format!("{field}.{locale} text must not be empty"),
+            );
+        }
+        if rules.references_required {
             validate_provenance(path, owner, &format!("{field}.{locale}"), &value.references, references, diagnostics);
         } else {
             validate_optional_provenance(path, owner, &format!("{field}.{locale}"), &value.references, references, diagnostics);

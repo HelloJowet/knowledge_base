@@ -48,6 +48,17 @@ pub fn execute(command: Command, knowledge_base: &KnowledgeBase) -> Result<ExitC
             source_language,
             archive_url,
             dry_run,
-        } => register::execute(knowledge_base, url, title, publisher, publication_date, source_language, archive_url, dry_run),
+        } => register::execute(
+            knowledge_base,
+            register::Args {
+                url,
+                title,
+                publisher,
+                publication_date,
+                source_language,
+                archive_url,
+                dry_run,
+            },
+        ),
     }
 }

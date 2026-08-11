@@ -2,6 +2,8 @@
 
 Loads and validates a complete knowledge-base directory.
 
+Validation targets the canonical 0.2.0 schema only. It does not provide compatibility parsing for earlier transit-owned record formats; see the repository [migration guide](../../MIGRATION.md).
+
 ```rust
 use knowledge_base_validation::validate_repository;
 
