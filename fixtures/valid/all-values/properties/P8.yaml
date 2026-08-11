@@ -1,0 +1,5 @@
+id: P8
+labels: {en: {text: datetime, references: []}}
+subject_types: [T1]
+value_type: datetime
+usage: statement

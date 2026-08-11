@@ -1,6 +1,6 @@
 # knowledge-base-crud
 
-Typed filesystem access for a file-based knowledge base. Operations are grouped by resource while `KnowledgeBase` remains the entry point:
+Typed filesystem access for a file-based knowledge base. `knowledge-base-crud` is the filesystem-backed CRUD layer; its public API will expand to complete CRUD for every resource. This release exposes the read, query, and mutation operations documented below. Operations are grouped by resource while `KnowledgeBase` remains the entry point:
 
 ```rust
 use knowledge_base_crud::{ApplyMode, EntityFilter, KnowledgeBase, ReferenceDraft, StatementBatch};

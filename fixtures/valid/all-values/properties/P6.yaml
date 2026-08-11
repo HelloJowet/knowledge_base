@@ -1,0 +1,5 @@
+id: P6
+labels: {en: {text: boolean, references: []}}
+subject_types: [T1]
+value_type: boolean
+usage: statement

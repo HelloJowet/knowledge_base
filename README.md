@@ -55,7 +55,7 @@ npx skills add HelloJowet/knowledge_base --skill knowledge-base-data-model
 
 ## Development
 
-The workspace contains models, filesystem CRUD, validation, and CLI crates:
+The workspace contains models, a filesystem-backed CRUD layer (currently exposing a documented subset of mutations), validation, and CLI crates:
 
 - [`knowledge-base-models`](crates/models/README.md)
 - [`knowledge-base-crud`](crates/crud/README.md)

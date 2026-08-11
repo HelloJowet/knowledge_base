@@ -1,0 +1,5 @@
+id: P10
+labels: {en: {text: coordinate, references: []}}
+subject_types: [T1]
+value_type: coordinate
+usage: statement

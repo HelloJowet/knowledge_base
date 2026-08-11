@@ -1,0 +1,5 @@
+id: P9
+labels: {en: {text: url, references: []}}
+subject_types: [T1]
+value_type: url
+usage: statement

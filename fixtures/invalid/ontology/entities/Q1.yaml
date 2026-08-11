@@ -1,0 +1,8 @@
+id: Q1
+labels: {en: {text: Entity, references: [R1]}}
+entity_types: [{value: T99, references: [R1]}]
+statements:
+  - id: S1
+    property: P99
+    value: {type: entity, value: Q99}
+    references: [R1]

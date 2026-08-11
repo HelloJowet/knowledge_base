@@ -1,0 +1,13 @@
+id: Q1
+labels:
+  tr:
+    text: "   "
+    references: [R99]
+  TR:
+    text: Duplicate
+    references: []
+  invalid_tag:
+    text: Bad tag
+    references: [R1]
+entity_types: []
+statements: []

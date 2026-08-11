@@ -1,0 +1,5 @@
+id: P4
+labels: {en: {text: decimal, references: []}}
+subject_types: [T1]
+value_type: decimal
+usage: statement

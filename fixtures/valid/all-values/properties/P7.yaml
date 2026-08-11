@@ -1,0 +1,5 @@
+id: P7
+labels: {en: {text: date, references: []}}
+subject_types: [T1]
+value_type: date
+usage: statement

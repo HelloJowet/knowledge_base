@@ -1,0 +1,5 @@
+id: P2
+labels: {en: {text: string, references: []}}
+subject_types: [T1]
+value_type: string
+usage: statement

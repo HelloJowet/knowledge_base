@@ -1,0 +1,5 @@
+id: P5
+labels: {en: {text: quantity, references: []}}
+subject_types: [T1]
+value_type: quantity
+usage: statement

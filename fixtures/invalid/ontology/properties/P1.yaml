@@ -1,0 +1,8 @@
+id: P1
+labels: {en: {text: Broken, references: []}}
+subject_types: []
+value_type: entity
+usage: qualifier
+target_types: []
+allowed_qualifiers: [P99]
+cardinality: one

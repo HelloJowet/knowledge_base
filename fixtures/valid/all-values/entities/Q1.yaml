@@ -1,0 +1,49 @@
+id: Q1
+labels:
+  en:
+    text: Value matrix
+    references: [R1]
+entity_types:
+  - value: T1
+    references: [R1]
+statements:
+  - id: S1
+    property: P1
+    value: {type: entity, value: Q2}
+    references: [R1]
+  - id: S2
+    property: P2
+    value: {type: string, value: text}
+    references: [R1]
+  - id: S3
+    property: P3
+    value: {type: integer, value: 42}
+    references: [R1]
+  - id: S4
+    property: P4
+    value: {type: decimal, value: "-1.5"}
+    references: [R1]
+  - id: S5
+    property: P5
+    value: {type: quantity, amount: "12.5", unit: km}
+    references: [R1]
+  - id: S6
+    property: P6
+    value: {type: boolean, value: true}
+    references: [R1]
+  - id: S7
+    property: P7
+    value: {type: date, value: "2024-02-29"}
+    references: [R1]
+  - id: S8
+    property: P8
+    value: {type: datetime, value: "2024-02-29T12:34:56Z"}
+    references: [R1]
+  - id: S9
+    property: P9
+    value: {type: url, value: https://example.org/value}
+    references: [R1]
+  - id: S10
+    property: P10
+    value: {type: coordinate, latitude: "40", longitude: "29", precision: "1"}
+    references: [R1]
