@@ -11,6 +11,14 @@ fn write_entity(root: &Path, filename: &str, id: &str, statements: &str) {
     .unwrap();
 }
 
+fn write_labeled_entity(root: &Path, id: &str, label: &str) {
+    fs::write(
+        root.join("entities").join(format!("{id}.yaml")),
+        format!("id: {id}\nlabels:\n  en:\n    text: {label}\n    references: []\nentity_types: []\nstatements: []\n"),
+    )
+    .unwrap();
+}
+
 fn filter(property: &str, target: &str) -> EntityFilter {
     EntityFilter {
         property: property.parse::<PropertyId>().unwrap(),
@@ -89,4 +97,47 @@ fn query_rejects_filename_identifier_mismatches() {
     write_entity(root.path(), "Q2.yaml", "Q1", " []");
     let error = KnowledgeBase::new(root.path()).entities().query(&[filter("P1", "Q43")], 1, 0).unwrap_err();
     assert!(error.to_string().contains("declares identifier Q1 instead of Q2"));
+}
+
+#[test]
+fn search_matches_localized_labels_orders_exact_matches_then_pages() {
+    let root = tempfile::tempdir().unwrap();
+    fs::create_dir(root.path().join("entities")).unwrap();
+    write_labeled_entity(root.path(), "Q10", "Central Station");
+    write_labeled_entity(root.path(), "Q2", "Central Park");
+    write_labeled_entity(root.path(), "Q3", "central");
+
+    let first = KnowledgeBase::new(root.path()).entities().search(" CENTRAL ", 2, 0).unwrap();
+    assert_eq!(first.query, "central");
+    assert_eq!(first.total, 3);
+    assert_eq!(first.next_offset, Some(2));
+    assert_eq!(first.entities.iter().map(|entity| entity.id.as_str()).collect::<Vec<_>>(), ["Q3", "Q2"]);
+
+    let second = KnowledgeBase::new(root.path()).entities().search("central", 2, 2).unwrap();
+    assert_eq!(second.next_offset, None);
+    assert_eq!(second.entities.iter().map(|entity| entity.id.as_str()).collect::<Vec<_>>(), ["Q10"]);
+}
+
+#[test]
+fn search_uses_unicode_case_insensitive_label_matching() {
+    let root = tempfile::tempdir().unwrap();
+    fs::create_dir(root.path().join("entities")).unwrap();
+    write_labeled_entity(root.path(), "Q1", "MÜNCHEN");
+
+    let page = KnowledgeBase::new(root.path()).entities().search("mün", 100, 0).unwrap();
+    assert_eq!(page.entities[0].id.as_str(), "Q1");
+}
+
+#[test]
+fn search_rejects_invalid_requests_and_invalid_repositories() {
+    let root = tempfile::tempdir().unwrap();
+    fs::create_dir(root.path().join("entities")).unwrap();
+    write_labeled_entity(root.path(), "Q1", "Ankara");
+    let knowledge_base = KnowledgeBase::new(root.path());
+    assert!(knowledge_base.entities().search(" \t ", 1, 0).unwrap_err().to_string().contains("query must not be empty"));
+    assert!(knowledge_base.entities().search("Ankara", 0, 0).unwrap_err().to_string().contains("limit"));
+
+    fs::write(root.path().join("entities/Q2.yaml"), "not: an entity\n").unwrap();
+    let error = KnowledgeBase::new(root.path()).entities().search("Ankara", 1, 0).unwrap_err();
+    assert!(error.to_string().contains("cannot parse entity"));
 }

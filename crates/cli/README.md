@@ -48,6 +48,15 @@ knowledge-base entity query --filter 'P3=Q2' --limit 25 --offset 25
 
 Multiple filters must all match. Results are deterministic YAML and default to 100 items from offset 0.
 
+Search every localized entity label with case-insensitive substring matching:
+
+```sh
+knowledge-base entity search Türkiye
+knowledge-base entity search Türkiye --limit 25 --offset 25
+```
+
+Search results contain complete canonical entities and pagination metadata. Exact label matches sort before substring matches, with numeric entity-ID ordering within each group.
+
 Inspect direct incoming, outgoing, and self-referential relationships:
 
 ```sh

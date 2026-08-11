@@ -190,6 +190,47 @@ fn entity_query_returns_full_entities_with_filter_and_pagination_metadata() {
 }
 
 #[test]
+fn entity_search_returns_ordered_paginated_canonical_entities() {
+    let root = copied_fixture();
+    fs::write(
+        root.path().join("entities/Q3.yaml"),
+        "id: Q3\nlabels:\n  en:\n    text: Türkiye Cumhuriyeti\n    references: [R1]\nentity_types: []\nstatements: []\n",
+    )
+    .expect("write search fixture entity");
+
+    let output = knowledge_base_command()
+        .args(["entity", "search", " türkiye ", "--limit", "1"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("run entity search");
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let page: serde_yaml::Value = serde_yaml::from_slice(&output.stdout).unwrap();
+    assert_eq!(page["query"], "türkiye");
+    assert_eq!(page["offset"], 0);
+    assert_eq!(page["limit"], 1);
+    assert_eq!(page["total"], 2);
+    assert_eq!(page["next_offset"], 1);
+    assert_eq!(page["entities"][0]["id"], "Q2");
+    assert!(page["entities"][0].get("statements").is_some());
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn invalid_entity_searches_fail_without_output() {
+    for arguments in [vec!["entity", "search", " "], vec!["entity", "search", "Türkiye", "--limit", "0"]] {
+        let output = knowledge_base_command()
+            .args(arguments)
+            .env("KNOWLEDGE_BASE_PATH", fixture())
+            .output()
+            .expect("run invalid entity search");
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(!output.stderr.is_empty());
+    }
+}
+
+#[test]
 fn entity_query_ands_filters_and_returns_empty_pages() {
     let matching = knowledge_base_command()
         .args(["entity", "query", "--filter", "P3=Q2", "--filter", "P1=228334", "--limit", "1"])

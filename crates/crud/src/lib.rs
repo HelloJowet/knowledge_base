@@ -8,8 +8,8 @@ mod reference;
 mod resource;
 
 pub use entity::{
-    ApplyMode, ApplyStatementsOutcome, Entities, EntitiesPage, EntityFilter, EntityRelationship, EntityRelationshipsPage, RelatedEntity, RelationshipDirection, StatementBatch,
-    StatementInput, StatementResult, StatementResultStatus,
+    ApplyMode, ApplyStatementsOutcome, Entities, EntitiesPage, EntityFilter, EntityRelationship, EntityRelationshipsPage, EntitySearchPage, RelatedEntity, RelationshipDirection,
+    StatementBatch, StatementInput, StatementResult, StatementResultStatus,
 };
 pub use entity_context::EntityContexts;
 pub use entity_type::EntityTypes;

@@ -59,7 +59,7 @@ impl Entities<'_> {
     }
 }
 
-fn load_entities(root: &Path) -> Result<Vec<Entity>, Error> {
+pub(super) fn load_entities(root: &Path) -> Result<Vec<Entity>, Error> {
     let directory = root.join("entities");
     let entries = fs::read_dir(&directory).map_err(|source| Error::Read { path: directory.clone(), source })?;
     let mut paths = Vec::new();

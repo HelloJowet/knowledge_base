@@ -30,6 +30,7 @@ KNOWLEDGE_BASE_PATH=/path/to/knowledge-base target/release/knowledge-base valida
 - [Validate a knowledge base](validate.md) with `validate`
 - [Read stored resources](read.md) with the resource-specific `read` commands
 - [Query entities](query.md) with `entity query`
+- [Search entity labels](query.md#search-entity-labels) with `entity search`
 - [Query direct relationships](relationships.md) with `entity relationships`
 - [Apply statement manifests](statements.md) with `entity statement apply`
 - [Register references](references.md) with `reference register`

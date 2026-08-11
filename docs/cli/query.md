@@ -22,3 +22,14 @@ Only top-level statements satisfy filters; qualifiers are ignored. Every filter 
 The command returns deterministic YAML containing the parsed filters, `total`, pagination metadata, and complete parsed entities sorted by numeric entity ID. It defaults to `--limit 100 --offset 0`; `--limit` must be greater than zero. When more matching entities remain, the response includes `next_offset`.
 
 The query reads and parses every entity file. A malformed entity, duplicate identifier, or mismatch between a filename and its declared identifier fails the complete query rather than returning partial results.
+
+## Search entity labels
+
+Use `entity search` to find entities whose localized labels contain a query:
+
+```sh
+knowledge-base entity search Türkiye
+knowledge-base entity search Türkiye --limit 25 --offset 25
+```
+
+The query is trimmed and compared case-insensitively against every localized label. Empty queries are rejected. Results contain complete parsed entities and pagination metadata. Exact normalized-label matches sort before substring-only matches; each group is ordered by numeric entity ID.
