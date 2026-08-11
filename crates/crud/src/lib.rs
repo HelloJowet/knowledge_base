@@ -6,6 +6,7 @@ mod mutation;
 mod property;
 mod reference;
 mod resource;
+mod snapshot;
 
 pub use entity::{
     ApplyMode, ApplyStatementsOutcome, Entities, EntitiesPage, EntityFilter, EntityRelationship, EntityRelationshipsPage, RelatedEntity, RelationshipDirection, StatementBatch,
@@ -16,6 +17,7 @@ pub use entity_type::EntityTypes;
 pub use error::Error;
 pub use property::Properties;
 pub use reference::{ReferenceDraft, ReferenceRegistrationOutcome, ReferenceRegistrationStatus, References};
+pub use snapshot::RepositorySnapshot;
 
 use knowledge_base_validation::{AdditionalValidator, Diagnostic, validate_repository_with};
 use std::fmt;
@@ -57,6 +59,15 @@ impl KnowledgeBase {
     /// Validates this repository with the built-in and configured domain validators.
     pub fn validate(&self) -> Vec<Diagnostic> {
         validate_repository_with(&self.root, self.additional_validators.iter().map(AsRef::as_ref))
+    }
+
+    /// Loads a complete, read-only view of the canonical repository.
+    ///
+    /// This checks that managed resources can be read and parsed, but does not
+    /// run generic or configured semantic validators. Call [`Self::validate`]
+    /// when semantic validation is required.
+    pub fn snapshot(&self) -> Result<RepositorySnapshot, Error> {
+        RepositorySnapshot::load(&self.root)
     }
 
     pub(crate) fn additional_validators(&self) -> &[Arc<dyn AdditionalValidator>] {

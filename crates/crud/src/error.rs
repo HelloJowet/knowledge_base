@@ -10,9 +10,12 @@ pub enum Error {
     ParseStatementBatch { path: PathBuf, source: serde_yaml::Error },
     ParseReference { path: PathBuf, source: serde_yaml::Error },
     ParseAllocation { path: PathBuf, source: serde_yaml::Error },
+    ParseEntityType { path: PathBuf, source: serde_yaml::Error },
+    ParseProperty { path: PathBuf, source: serde_yaml::Error },
     InvalidRequest(String),
     ParseEntity { path: PathBuf, source: serde_yaml::Error },
     InvalidRepository(String),
+    InvalidSnapshot { path: PathBuf, message: String },
     Edit { path: PathBuf, message: String },
     Validation(Vec<Diagnostic>),
     Write { path: PathBuf, source: io::Error },
@@ -29,11 +32,14 @@ impl fmt::Display for Error {
             }
             Self::ParseReference { path, source } => write!(formatter, "cannot parse reference {}: {source}", path.display()),
             Self::ParseAllocation { path, source } => write!(formatter, "cannot parse identifier allocation {}: {source}", path.display()),
+            Self::ParseEntityType { path, source } => write!(formatter, "cannot parse entity type {}: {source}", path.display()),
+            Self::ParseProperty { path, source } => write!(formatter, "cannot parse property {}: {source}", path.display()),
             Self::InvalidRequest(message) => write!(formatter, "invalid mutation request: {message}"),
             Self::ParseEntity { path, source } => {
                 write!(formatter, "cannot parse entity {}: {source}", path.display())
             }
             Self::InvalidRepository(message) => write!(formatter, "cannot query knowledge base: {message}"),
+            Self::InvalidSnapshot { path, message } => write!(formatter, "cannot load repository snapshot at {}: {message}", path.display()),
             Self::Edit { path, message } => {
                 write!(formatter, "cannot edit resource {}: {message}", path.display())
             }
@@ -63,10 +69,19 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Read { source, .. } | Self::Write { source, .. } => Some(source),
-            Self::ParseStatementBatch { source, .. } | Self::ParseReference { source, .. } | Self::ParseAllocation { source, .. } | Self::ParseEntity { source, .. } => {
-                Some(source)
-            }
-            Self::InvalidRequest(_) | Self::InvalidRepository(_) | Self::Edit { .. } | Self::Validation(_) | Self::ConcurrentChange(_) | Self::Commit { .. } => None,
+            Self::ParseStatementBatch { source, .. }
+            | Self::ParseReference { source, .. }
+            | Self::ParseAllocation { source, .. }
+            | Self::ParseEntityType { source, .. }
+            | Self::ParseProperty { source, .. }
+            | Self::ParseEntity { source, .. } => Some(source),
+            Self::InvalidRequest(_)
+            | Self::InvalidRepository(_)
+            | Self::InvalidSnapshot { .. }
+            | Self::Edit { .. }
+            | Self::Validation(_)
+            | Self::ConcurrentChange(_)
+            | Self::Commit { .. } => None,
         }
     }
 }

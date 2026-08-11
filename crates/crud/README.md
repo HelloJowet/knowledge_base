@@ -41,6 +41,18 @@ Statement manifests may include optional qualifiers (`property` plus a typed `va
 
 Equivalent read services are available through `entity_types()`, `properties()`, `references()`, and `entity_contexts()`. Reads return files exactly as stored.
 
+For a typed, read-only view of all structured resources, load a repository snapshot:
+
+```rust
+let snapshot = knowledge_base.snapshot()?;
+let entity = snapshot.entities().get(&entity_id);
+let allocation = snapshot.allocation();
+# let _ = (entity, allocation);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Snapshots index resources by ID in deterministic order and reject malformed repository structure. They do not run generic or domain semantic validation; call `knowledge_base.validate()` when that is required.
+
 `entities().query()` requires at least one typed property/value filter and applies AND semantics to top-level statements. It scans the entity directory, sorts matches by numeric ID, and returns complete parsed entities with offset pagination metadata.
 
 Mutations use a shared `.knowledge-base.lock`, validate a staged repository, detect changes made after planning, and attempt rollback if a later replacement fails. Multi-file mutations are not crash-atomic.
