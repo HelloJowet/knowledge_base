@@ -2,7 +2,7 @@
 
 A simple foundation for building your own knowledge base. Structured data is stored in YAML, with optional Markdown for unstructured data attached to an entity.
 
-Using files instead of a database makes the knowledge base easy to inspect, edit, version with Git, and use with AI coding agents such as Codex and Claude Code. The project intentionally favors simplicity and portability.
+Using files instead of a database makes the knowledge base easy to inspect, edit, version with Git and use with AI coding agents such as Codex and Claude Code. The project intentionally favors simplicity and portability.
 
 ## Trade-offs
 
@@ -27,21 +27,38 @@ A file-based knowledge base becomes harder to validate, query, and update concur
 
 See the [data model](docs/data-model.md) for the file format. The example in [`fixtures/valid/minimal`](fixtures/valid/minimal) is a small knowledge base you can copy and adapt.
 
-## Validate a knowledge base
+## Command-line interface
 
-The included Rust validator checks file structure, values, ontology rules, cross-references, provenance, and Markdown citations. It reports errors without changing files.
+Set `KNOWLEDGE_BASE_PATH` to the root directory containing the knowledge-base files:
 
 ```sh
-cargo run -p knowledge-base-cli -- validate fixtures/valid/minimal
+export KNOWLEDGE_BASE_PATH="$PWD/fixtures/valid/minimal"
 ```
 
-See the [`knowledge-base-validation`](crates/validation/README.md) crate for the checks performed.
+The included validator checks file structure, values, ontology rules, cross-references, provenance, and Markdown citations. It reports errors without changing files:
+
+```sh
+cargo run -p knowledge-base-cli -- validate
+```
+
+Read individual records or an entity's Markdown context with resource-specific commands:
+
+```sh
+cargo run -p knowledge-base-cli -- entity read Q1
+cargo run -p knowledge-base-cli -- entity-type read T1
+cargo run -p knowledge-base-cli -- property read P1
+cargo run -p knowledge-base-cli -- reference read R1
+cargo run -p knowledge-base-cli -- entity-context read Q1
+```
+
+Read commands print files exactly as stored and do not validate the rest of the knowledge base. See the [`knowledge-base-validation`](crates/validation/README.md) crate for the checks performed by `validate`.
 
 ## Development
 
-The workspace contains models, validation, and CLI crates:
+The workspace contains models, filesystem CRUD, validation, and CLI crates:
 
 - [`knowledge-base-models`](crates/models/README.md)
+- [`knowledge-base-crud`](crates/crud/README.md)
 - [`knowledge-base-validation`](crates/validation/README.md)
 - [`knowledge-base-cli`](crates/cli/README.md)
 

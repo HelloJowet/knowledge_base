@@ -1,0 +1,10 @@
+[package]
+name = "knowledge-base-crud"
+description = "Filesystem CRUD operations for a file-based knowledge base"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+knowledge-base-models.workspace = true

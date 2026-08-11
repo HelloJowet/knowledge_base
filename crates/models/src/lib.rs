@@ -1,6 +1,25 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::str::FromStr;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IdentifierParseError {
+    value: String,
+    prefix: &'static str,
+}
+
+impl fmt::Display for IdentifierParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "invalid identifier {:?}; expected canonical {}<positive integer> syntax",
+            self.value, self.prefix
+        )
+    }
+}
+
+impl std::error::Error for IdentifierParseError {}
 
 macro_rules! identifier {
     ($name:ident, $prefix:literal) => {
@@ -24,24 +43,31 @@ macro_rules! identifier {
             }
         }
 
+        impl FromStr for $name {
+            type Err = IdentifierParseError;
+
+            fn from_str(value: &str) -> Result<Self, Self::Err> {
+                let digits = value.strip_prefix($prefix).ok_or_else(|| IdentifierParseError {
+                    value: value.to_owned(),
+                    prefix: $prefix,
+                })?;
+                let canonical = !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()) && !digits.starts_with('0') && digits.parse::<u64>().is_ok();
+                if !canonical {
+                    return Err(IdentifierParseError {
+                        value: value.to_owned(),
+                        prefix: $prefix,
+                    });
+                }
+                Ok(Self(value.to_owned()))
+            }
+        }
+
         impl<'de> Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
                 D: Deserializer<'de>,
             {
-                let value = String::deserialize(deserializer)?;
-                let digits = value
-                    .strip_prefix($prefix)
-                    .ok_or_else(|| serde::de::Error::custom(concat!("expected ", $prefix, "<n> identifier")))?;
-                let canonical = !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()) && !digits.starts_with('0') && digits.parse::<u64>().is_ok();
-                if !canonical {
-                    return Err(serde::de::Error::custom(concat!(
-                        "identifier must use canonical ",
-                        $prefix,
-                        "<positive integer> syntax"
-                    )));
-                }
-                Ok(Self(value))
+                String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
             }
         }
     };
@@ -244,6 +270,15 @@ mod tests {
     fn typed_identifiers_reject_noncanonical_forms() {
         for value in ["Q0", "Q01", "Q-1", "Q", "P1", "q1", "1"] {
             assert!(!parses::<EntityId>(value), "{value} unexpectedly parsed as an entity identifier");
+        }
+    }
+
+    #[test]
+    fn typed_identifiers_parse_from_strings() {
+        assert_eq!("Q42".parse::<EntityId>().expect("valid identifier").as_str(), "Q42");
+
+        for value in ["Q0", "Q01", "P1", "../Q1", "Q1.yaml"] {
+            assert!(value.parse::<EntityId>().is_err(), "{value} unexpectedly parsed as an entity identifier");
         }
     }
 }

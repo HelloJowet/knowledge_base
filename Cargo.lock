@@ -438,7 +438,17 @@ name = "knowledge-base-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "knowledge-base-crud",
+ "knowledge-base-models",
  "knowledge-base-validation",
+ "tempfile",
+]
+
+[[package]]
+name = "knowledge-base-crud"
+version = "0.1.0"
+dependencies = [
+ "knowledge-base-models",
 ]
 
 [[package]]

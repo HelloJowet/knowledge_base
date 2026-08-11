@@ -1,38 +1,41 @@
-use clap::{Parser, Subcommand};
-use knowledge_base_validation::validate_repository;
+mod commands;
+
+use clap::Parser;
+use std::env;
 use std::path::PathBuf;
 use std::process::ExitCode;
+
+const KNOWLEDGE_BASE_PATH: &str = "KNOWLEDGE_BASE_PATH";
 
 #[derive(Debug, Parser)]
 #[command(name = "knowledge-base", version, about)]
 struct Cli {
     #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// Validate a knowledge-base directory.
-    Validate {
-        /// Root directory containing the knowledge-base files.
-        path: PathBuf,
-    },
+    command: commands::Command,
 }
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    match cli.command {
-        Command::Validate { path } => {
-            let diagnostics = validate_repository(&path);
-            if diagnostics.is_empty() {
-                println!("valid knowledge base: {}", path.display());
-                ExitCode::SUCCESS
-            } else {
-                for diagnostic in diagnostics {
-                    eprintln!("{diagnostic}");
-                }
-                ExitCode::FAILURE
-            }
+    let root = match knowledge_base_path() {
+        Ok(root) => root,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::FAILURE;
         }
+    };
+
+    match commands::execute(cli.command, &root) {
+        Ok(exit_code) => exit_code,
+        Err(error) => {
+            eprintln!("{error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn knowledge_base_path() -> Result<PathBuf, &'static str> {
+    match env::var_os(KNOWLEDGE_BASE_PATH) {
+        Some(value) if !value.is_empty() => Ok(value.into()),
+        _ => Err("KNOWLEDGE_BASE_PATH must be set to the knowledge-base root directory"),
     }
 }

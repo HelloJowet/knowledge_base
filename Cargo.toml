@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/cli",
+    "crates/crud",
     "crates/models",
     "crates/validation",
 ]
@@ -14,6 +15,7 @@ license = "MIT"
 [workspace.dependencies]
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
+knowledge-base-crud = { path = "crates/crud" }
 knowledge-base-models = { path = "crates/models" }
 knowledge-base-validation = { path = "crates/validation" }
 language-tags = "0.3"

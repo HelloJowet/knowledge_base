@@ -1,6 +1,6 @@
 [package]
 name = "knowledge-base-cli"
-description = "Command-line interface for the file-based knowledge base validator"
+description = "Command-line interface for a file-based knowledge base"
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
@@ -8,7 +8,12 @@ license.workspace = true
 
 [dependencies]
 clap.workspace = true
+knowledge-base-crud.workspace = true
+knowledge-base-models.workspace = true
 knowledge-base-validation.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
 
 [[bin]]
 name = "knowledge-base"
