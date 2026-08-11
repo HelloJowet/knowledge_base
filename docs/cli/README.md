@@ -13,7 +13,7 @@ export KNOWLEDGE_BASE_PATH="$PWD/fixtures/valid/minimal"
 Run the CLI from the workspace with Cargo:
 
 ```sh
-cargo run -p knowledge-base-cli -- validate
+knowledge-base validate
 ```
 
 Build and run the standalone executable with:

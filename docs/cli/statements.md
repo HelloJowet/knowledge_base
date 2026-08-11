@@ -28,7 +28,7 @@ Keep temporary manifests outside the knowledge-base directory when practical bec
 Preview a batch first with `--dry-run`:
 
 ```sh
-cargo run --quiet --bin knowledge-base -- \
+knowledge-base \
   entity statement apply /tmp/statement-manifest.yaml --dry-run
 ```
 
@@ -47,7 +47,7 @@ results:
 After confirming every result is `would_add`, apply the same unchanged manifest without `--dry-run`:
 
 ```sh
-cargo run --quiet --bin knowledge-base -- \
+knowledge-base \
   entity statement apply /tmp/statement-manifest.yaml
 ```
 

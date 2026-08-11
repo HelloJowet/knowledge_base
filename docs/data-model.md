@@ -145,17 +145,21 @@ Decimals and coordinates use plain base-10 notation without plus signs, exponent
 
 ## References
 
-A reference requires `id`, `url`, and `retrieved_at`. `archive_url` is optional.
+A reference requires `id`, `url`, `title`, and `retrieved_at`. `publisher`, `publication_date`, `source_language`, and `archive_url` are optional.
 
 ```yaml
 # references/R1.yaml
 id: R1
 url: https://example.org/bilecik
+title: Bilecik source
+publisher: Example Publisher
+publication_date: "2025-01-14"
+source_language: en
 retrieved_at: "2025-01-15T10:30:00Z"
 archive_url: https://web.archive.org/example/bilecik
 ```
 
-`retrieved_at` is an RFC 3339 timestamp.
+`title` and any supplied metadata values must not be empty. `publication_date` accepts a valid calendar year, month, or day in `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` form. `source_language` is a well-formed BCP 47 language tag. `retrieved_at` is an RFC 3339 timestamp; `url` and `archive_url` are absolute URLs.
 
 ## Identifier allocation
 

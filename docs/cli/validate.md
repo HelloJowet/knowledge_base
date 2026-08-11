@@ -3,7 +3,7 @@
 Validate the knowledge base configured by `KNOWLEDGE_BASE_PATH`:
 
 ```sh
-cargo run -p knowledge-base-cli -- validate
+knowledge-base validate
 ```
 
 The command checks file structure, values, ontology rules, cross-references, provenance, and Markdown citations. It reports diagnostics without changing knowledge-base files and exits unsuccessfully when any diagnostics are found.

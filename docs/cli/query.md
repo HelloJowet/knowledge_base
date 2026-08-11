@@ -3,13 +3,13 @@
 Use `entity query` to find entities containing a top-level statement with a given property and value:
 
 ```sh
-cargo run --quiet --bin knowledge-base -- entity query --filter P3=Q2
+knowledge-base entity query --filter P3=Q2
 ```
 
 At least one `--filter` is required. Repeat it to require every property/value pair:
 
 ```sh
-cargo run --quiet --bin knowledge-base -- \
+knowledge-base \
   entity query --filter P3=Q2 --filter P1=228334
 ```
 
