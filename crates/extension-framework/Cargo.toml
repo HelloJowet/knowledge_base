@@ -13,4 +13,10 @@ repository.workspace = true
 
 [dependencies]
 knowledge-base-models.workspace = true
+knowledge-base-snapshot.workspace = true
 knowledge-base-validation.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

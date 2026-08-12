@@ -1069,7 +1069,11 @@ name = "knowledge-base-extension-framework"
 version = "0.3.0"
 dependencies = [
  "knowledge-base-models",
+ "knowledge-base-snapshot",
  "knowledge-base-validation",
+ "serde",
+ "serde_yaml",
+ "tempfile",
 ]
 
 [[package]]

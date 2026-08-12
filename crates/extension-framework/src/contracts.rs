@@ -2,6 +2,7 @@ use crate::bindings::ResolvedBindings;
 use crate::error::{FrameworkError, IdentifierError};
 use knowledge_base_models::{Cardinality, PropertyUsage, ValueType};
 use knowledge_base_validation::KnowledgeBaseValidator;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
@@ -23,6 +24,24 @@ impl ContractVersion {
 impl fmt::Display for ContractVersion {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(formatter)
+    }
+}
+
+impl Serialize for ContractVersion {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u32(self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for ContractVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        u32::deserialize(deserializer).map(Self)
     }
 }
 
@@ -52,6 +71,24 @@ impl FromStr for ExtensionId {
     }
 }
 
+impl Serialize for ExtensionId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for ExtensionId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
+    }
+}
+
 /// A lowercase snake_case semantic-binding key.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct BindingKey(String);
@@ -75,6 +112,24 @@ impl FromStr for BindingKey {
         canonical_segments(value, '_')
             .then(|| Self(value.to_owned()))
             .ok_or_else(|| IdentifierError::new(value, "lowercase snake_case"))
+    }
+}
+
+impl Serialize for BindingKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for BindingKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
     }
 }
 

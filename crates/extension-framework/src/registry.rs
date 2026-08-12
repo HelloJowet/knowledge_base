@@ -42,6 +42,11 @@ impl ExtensionRegistry {
         Ok(ActiveExtensions { ordered })
     }
 
+    /// Returns compiled extension metadata by canonical identifier.
+    pub fn metadata(&self, id: &ExtensionId) -> Option<&ExtensionMetadata> {
+        self.extensions.get(id).map(|extension| extension.metadata())
+    }
+
     fn validate_dependencies(&self, metadata: &ExtensionMetadata) -> Result<(), FrameworkError> {
         for dependency in &metadata.dependencies {
             let available = self.extensions.get(&dependency.id).ok_or_else(|| FrameworkError::MissingDependency {
