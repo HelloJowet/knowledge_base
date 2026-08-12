@@ -1067,7 +1067,7 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-extension-framework"
-version = "0.3.0"
+version = "0.1.0"
 dependencies = [
  "knowledge-base-models",
  "knowledge-base-snapshot",
@@ -1079,7 +1079,7 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-extension-wikidata"
-version = "0.3.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1096,7 +1096,7 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-ingestion-candidate-inventory"
-version = "0.3.0"
+version = "0.1.0"
 dependencies = [
  "chrono",
  "knowledge-base-models",
@@ -1110,7 +1110,7 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-ingestion-retrieval"
-version = "0.3.0"
+version = "0.1.0"
 dependencies = [
  "ammonia",
  "anyhow",
@@ -1135,7 +1135,7 @@ dependencies = [
 
 [[package]]
 name = "knowledge-base-snapshot"
-version = "0.3.0"
+version = "0.1.0"
 dependencies = [
  "knowledge-base-models",
  "serde_yaml",

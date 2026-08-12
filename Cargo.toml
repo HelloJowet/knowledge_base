@@ -30,12 +30,12 @@ encoding_rs = "0.8"
 fs2 = "0.4"
 knowledge-base-crud = { version = "0.3.0", path = "crates/crud" }
 knowledge-base-cli = { version = "0.3.0", path = "crates/cli" }
-knowledge-base-extension-framework = { version = "0.3.0", path = "crates/extension-framework" }
-knowledge-base-extension-wikidata = { version = "0.3.0", path = "crates/extension-wikidata" }
-knowledge-base-ingestion-candidate-inventory = { version = "0.3.0", path = "crates/ingestion-candidate-inventory" }
-knowledge-base-ingestion-retrieval = { version = "0.3.0", path = "crates/ingestion-retrieval" }
+knowledge-base-extension-framework = { version = "0.1.0", path = "crates/extension-framework" }
+knowledge-base-extension-wikidata = { version = "0.1.0", path = "crates/extension-wikidata" }
+knowledge-base-ingestion-candidate-inventory = { version = "0.1.0", path = "crates/ingestion-candidate-inventory" }
+knowledge-base-ingestion-retrieval = { version = "0.1.0", path = "crates/ingestion-retrieval" }
 knowledge-base-models = { version = "0.3.0", path = "crates/models" }
-knowledge-base-snapshot = { version = "0.3.0", path = "crates/snapshot" }
+knowledge-base-snapshot = { version = "0.1.0", path = "crates/snapshot" }
 knowledge-base-validation = { version = "0.3.0", path = "crates/validation" }
 language-tags = "0.3"
 pulldown-cmark = "0.13"
