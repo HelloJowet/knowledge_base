@@ -49,6 +49,10 @@ fn extension(name: &str, dependencies: &[(&str, u32)], bindings: &[(&str, Bindin
 
 #[test]
 fn identifiers_and_references_are_canonical() {
+    const STATIC_EXTENSION: ExtensionId = ExtensionId::from_static("wikidata");
+    const STATIC_KEY: BindingKey = BindingKey::from_static("item_id_property");
+    const STATIC_REFERENCE: BindingReference = BindingReference::from_static("wikidata", "item_id_property");
+
     for valid in ["wikidata", "public-transport", "v1"] {
         assert!(valid.parse::<ExtensionId>().is_ok());
     }
@@ -62,6 +66,9 @@ fn identifiers_and_references_are_canonical() {
         assert!(invalid.parse::<BindingKey>().is_err(), "{invalid} accepted");
     }
     assert_eq!("wikidata:item_id_property".parse::<BindingReference>().unwrap().to_string(), "wikidata:item_id_property");
+    assert_eq!(STATIC_EXTENSION, "wikidata".parse().unwrap());
+    assert_eq!(STATIC_KEY, "item_id_property".parse().unwrap());
+    assert_eq!(STATIC_REFERENCE, "wikidata:item_id_property".parse().unwrap());
 }
 
 #[test]

@@ -75,7 +75,8 @@ fn additional_validators_share_a_snapshot_and_their_diagnostics_are_sorted_with_
         calls.lock().unwrap().iter().map(|(name, path, _)| (*name, path.clone())).collect::<Vec<_>>(),
         [("first", root.clone()), ("second", root.clone())]
     );
-    assert_eq!(calls.lock().unwrap()[0].2, calls.lock().unwrap()[1].2);
+    let calls = calls.lock().unwrap();
+    assert_eq!(calls[0].2, calls[1].2);
     assert!(!diagnostics.iter().any(|diagnostic| diagnostic.layer == ValidationLayer::Schema));
     let domain_paths = diagnostics
         .iter()

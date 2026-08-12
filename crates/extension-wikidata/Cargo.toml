@@ -1,0 +1,31 @@
+[package]
+name = "knowledge-base-extension-wikidata"
+description = "Wikidata extension and reference registration command for knowledge-base"
+readme = "README.md"
+keywords = ["knowledge-base", "wikidata", "extensions"]
+categories = ["command-line-utilities", "web-programming::http-client"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+name = "knowledge_base_extension_wikidata"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+knowledge-base-cli.workspace = true
+knowledge-base-crud.workspace = true
+knowledge-base-extension-framework.workspace = true
+knowledge-base-models.workspace = true
+reqwest = { workspace = true, features = ["blocking", "json", "query", "rustls"] }
+serde_json.workspace = true
+serde_yaml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,7 +1,7 @@
-//! Reusable command-line distribution support for a file-based knowledge base.
+//! Reusable command-line application support for a file-based knowledge base.
 //!
-//! The published binary is the base-only distribution. Downstream applications
-//! can statically register their core and CLI extensions with [`DistributionBuilder`].
+//! The published binary is the base-only application. Downstream applications
+//! can statically register extensions with [`Application::builder`].
 
 mod commands;
 
@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 const KNOWLEDGE_BASE_PATH: &str = "KNOWLEDGE_BASE_PATH";
 
-/// A CLI error rendered by the distribution using the base CLI error convention.
+/// A CLI error rendered by the application using the base CLI error convention.
 #[derive(Debug)]
 pub struct CliError {
     message: String,
@@ -81,12 +81,8 @@ impl<'a> ExtensionCommandContext<'a> {
     }
 }
 
-/// CLI behavior for one statically compiled core extension.
-pub trait KnowledgeBaseCliExtension: Send + Sync {
-    /// The core extension identifier handled by this CLI extension.
-    fn id(&self) -> &ExtensionId;
-    /// The core extension contract supported by this CLI handler.
-    fn contract(&self) -> ContractVersion;
+/// Optional CLI behavior for one statically compiled extension.
+pub trait KnowledgeBaseCliExtension: KnowledgeBaseExtension {
     /// The static command inserted below `knowledge-base extension`.
     fn command(&self) -> Command;
     /// Whether the selected command requires a configured and activated repository.
@@ -95,101 +91,87 @@ pub trait KnowledgeBaseCliExtension: Send + Sync {
     fn execute(&self, matches: &ArgMatches, context: ExtensionCommandContext<'_>) -> Result<ExitCode, CliError>;
 }
 
-/// Errors found while assembling one statically composed distribution.
+/// Errors found while assembling one statically composed application.
 #[derive(Debug)]
-pub enum DistributionBuildError {
+pub enum BuildError {
     Framework(knowledge_base_extension_framework::error::FrameworkError),
-    DuplicateCliExtension(ExtensionId),
-    MissingCoreExtension(ExtensionId),
-    InconsistentCliExtension {
-        extension: ExtensionId,
-        core_contract: ContractVersion,
-        cli_contract: ContractVersion,
-    },
-    InvalidCliCommand {
-        extension: ExtensionId,
-        command: String,
-    },
+    InvalidCliCommand { extension: ExtensionId, command: String },
 }
 
-impl fmt::Display for DistributionBuildError {
+impl fmt::Display for BuildError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Framework(error) => error.fmt(formatter),
-            Self::DuplicateCliExtension(id) => write!(formatter, "CLI extension {id} is registered more than once"),
-            Self::MissingCoreExtension(id) => write!(formatter, "CLI extension {id} has no matching core extension"),
-            Self::InconsistentCliExtension {
-                extension,
-                core_contract,
-                cli_contract,
-            } => write!(
-                formatter,
-                "CLI extension {extension} supports contract {cli_contract}, but its core extension supports {core_contract}"
-            ),
             Self::InvalidCliCommand { extension, command } => write!(formatter, "CLI extension {extension} must provide command {extension}, not {command}"),
         }
     }
 }
 
-impl Error for DistributionBuildError {}
+impl Error for BuildError {}
 
-/// Collects the static extensions that form one executable distribution.
+/// Collects the static extensions that form one executable application.
 #[derive(Default)]
-pub struct DistributionBuilder {
+pub struct Builder {
     core_extensions: Vec<Arc<dyn KnowledgeBaseExtension>>,
     cli_extensions: Vec<Arc<dyn KnowledgeBaseCliExtension>>,
 }
 
-impl DistributionBuilder {
+impl Builder {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn with_core_extension(mut self, extension: Arc<dyn KnowledgeBaseExtension>) -> Self {
-        self.core_extensions.push(extension);
+    /// Adds an extension that does not expose CLI commands.
+    pub fn with_core_extension<E>(mut self, extension: E) -> Self
+    where
+        E: KnowledgeBaseExtension + 'static,
+    {
+        self.core_extensions.push(Arc::new(extension));
         self
     }
 
-    pub fn with_cli_extension(mut self, extension: Arc<dyn KnowledgeBaseCliExtension>) -> Self {
+    /// Adds one extension object with its core contract and CLI capability.
+    pub fn with_extension<E>(mut self, extension: E) -> Self
+    where
+        E: KnowledgeBaseCliExtension + 'static,
+    {
+        let extension = Arc::new(extension);
+        self.core_extensions.push(extension.clone());
         self.cli_extensions.push(extension);
         self
     }
 
-    pub fn build(self) -> Result<Distribution, DistributionBuildError> {
-        let registry = ExtensionRegistry::new(self.core_extensions).map_err(DistributionBuildError::Framework)?;
+    pub fn build(self) -> Result<Application, BuildError> {
+        let registry = ExtensionRegistry::new(self.core_extensions).map_err(BuildError::Framework)?;
         let mut cli_extensions = BTreeMap::new();
         for extension in self.cli_extensions {
-            let id = extension.id().clone();
-            let core = registry.metadata(&id).ok_or_else(|| DistributionBuildError::MissingCoreExtension(id.clone()))?;
-            if core.contract != extension.contract() {
-                return Err(DistributionBuildError::InconsistentCliExtension {
-                    extension: id,
-                    core_contract: core.contract,
-                    cli_contract: extension.contract(),
-                });
-            }
+            let id = extension.metadata().id.clone();
             let command = extension.command();
-            if command.get_name() != extension.id().as_str() {
-                return Err(DistributionBuildError::InvalidCliCommand {
-                    extension: extension.id().clone(),
+            if command.get_name() != id.as_str() {
+                return Err(BuildError::InvalidCliCommand {
+                    extension: id,
                     command: command.get_name().to_owned(),
                 });
             }
-            if cli_extensions.insert(extension.id().clone(), extension).is_some() {
-                return Err(DistributionBuildError::DuplicateCliExtension(id));
-            }
+            let previous = cli_extensions.insert(id, extension);
+            debug_assert!(previous.is_none(), "duplicate CLI extensions are rejected by the core registry");
         }
-        Ok(Distribution { registry, cli_extensions })
+        Ok(Application { registry, cli_extensions })
     }
 }
 
-/// A validated static CLI distribution.
-pub struct Distribution {
+/// A validated static CLI application.
+pub struct Application {
     registry: ExtensionRegistry,
     cli_extensions: BTreeMap<ExtensionId, Arc<dyn KnowledgeBaseCliExtension>>,
 }
 
-impl Distribution {
+impl Application {
+    /// Starts configuring a CLI application.
+    pub fn builder() -> Builder {
+        Builder::new()
+    }
+
     /// Parses and executes a command using process arguments.
     pub fn run(&self) -> ExitCode {
         self.run_from(env::args_os())
@@ -366,18 +348,18 @@ fn knowledge_base_path() -> Result<PathBuf, &'static str> {
     }
 }
 
-/// Runs the base-only published distribution.
+/// Runs the base-only published application.
 pub fn run() -> ExitCode {
-    DistributionBuilder::new().build().expect("base distribution is valid").run()
+    Application::builder().build().expect("base application is valid").run()
 }
 
-/// Runs the base-only published distribution with supplied arguments.
+/// Runs the base-only published application with supplied arguments.
 pub fn run_from<I, T>(arguments: I) -> ExitCode
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
-    DistributionBuilder::new().build().expect("base distribution is valid").run_from(arguments)
+    Application::builder().build().expect("base application is valid").run_from(arguments)
 }
 
 #[cfg(test)]
@@ -397,27 +379,23 @@ mod tests {
         fn metadata(&self) -> &ExtensionMetadata {
             &self.0
         }
-
-        fn validators(&self, _: &ResolvedBindings) -> Result<Vec<Arc<dyn KnowledgeBaseValidator>>, FrameworkError> {
-            Ok(Vec::new())
-        }
     }
 
-    struct TestCliExtension {
-        id: ExtensionId,
-        contract: ContractVersion,
+    struct TestExtension {
+        metadata: ExtensionMetadata,
         called: Arc<AtomicBool>,
+        command_name: &'static str,
     }
 
-    impl KnowledgeBaseCliExtension for TestCliExtension {
-        fn id(&self) -> &ExtensionId {
-            &self.id
+    impl KnowledgeBaseExtension for TestExtension {
+        fn metadata(&self) -> &ExtensionMetadata {
+            &self.metadata
         }
-        fn contract(&self) -> ContractVersion {
-            self.contract
-        }
+    }
+
+    impl KnowledgeBaseCliExtension for TestExtension {
         fn command(&self) -> Command {
-            Command::new("demo")
+            Command::new(self.command_name)
         }
         fn requires_repository(&self, _: &ArgMatches) -> bool {
             false
@@ -434,14 +412,14 @@ mod tests {
         value.parse().unwrap()
     }
 
-    fn core(name: &str) -> Arc<dyn KnowledgeBaseExtension> {
-        Arc::new(CoreExtension(ExtensionMetadata {
+    fn metadata(name: &str) -> ExtensionMetadata {
+        ExtensionMetadata {
             id: id(name),
             contract: ContractVersion::new(1),
             dependencies: Vec::new(),
             bindings: Vec::new(),
             ontology_requirements: OntologyRequirements::default(),
-        }))
+        }
     }
 
     struct RejectingExtension(ExtensionMetadata);
@@ -479,30 +457,54 @@ mod tests {
     #[test]
     fn builder_routes_repository_independent_extension_commands() {
         let called = Arc::new(AtomicBool::new(false));
-        let distribution = DistributionBuilder::new()
-            .with_core_extension(core("demo"))
-            .with_cli_extension(Arc::new(TestCliExtension {
-                id: id("demo"),
-                contract: ContractVersion::new(1),
+        let application = Application::builder()
+            .with_extension(TestExtension {
+                metadata: metadata("demo"),
                 called: called.clone(),
-            }))
+                command_name: "demo",
+            })
             .build()
             .unwrap();
-        assert_eq!(distribution.run_from(["knowledge-base", "extension", "demo"]), ExitCode::SUCCESS);
+        assert_eq!(application.run_from(["knowledge-base", "extension", "demo"]), ExitCode::SUCCESS);
         assert!(called.load(Ordering::SeqCst));
     }
 
     #[test]
-    fn builder_rejects_cli_handlers_without_a_matching_core_extension() {
-        let result = DistributionBuilder::new()
-            .with_cli_extension(Arc::new(TestCliExtension {
-                id: id("demo"),
-                contract: ContractVersion::new(1),
+    fn builder_rejects_an_extension_command_with_the_wrong_name() {
+        let result = Application::builder()
+            .with_extension(TestExtension {
+                metadata: metadata("demo"),
                 called: Arc::new(AtomicBool::new(false)),
-            }))
+                command_name: "wrong",
+            })
             .build();
         let Err(error) = result else { panic!("builder unexpectedly succeeded") };
-        assert!(matches!(error, DistributionBuildError::MissingCoreExtension(extension) if extension == id("demo")));
+        assert!(matches!(error, BuildError::InvalidCliCommand { extension, command } if extension == id("demo") && command == "wrong"));
+    }
+
+    #[test]
+    fn builder_rejects_duplicate_extension_ids() {
+        let result = Application::builder()
+            .with_core_extension(CoreExtension(metadata("demo")))
+            .with_extension(TestExtension {
+                metadata: metadata("demo"),
+                called: Arc::new(AtomicBool::new(false)),
+                command_name: "demo",
+            })
+            .build();
+        let Err(error) = result else { panic!("builder unexpectedly succeeded") };
+        assert!(matches!(
+            error,
+            BuildError::Framework(knowledge_base_extension_framework::error::FrameworkError::DuplicateExtension(extension))
+                if extension == id("demo")
+        ));
+    }
+
+    #[test]
+    fn builder_accepts_a_core_only_extension() {
+        let application = Application::builder().with_core_extension(CoreExtension(metadata("demo"))).build().unwrap();
+        assert!(application.registry.metadata(&id("demo")).is_some());
+        assert!(application.cli_extensions.is_empty());
     }
 
     #[test]
@@ -515,15 +517,15 @@ mod tests {
             "statements:\n  - entity: Q1\n    property: P1\n    value: { type: integer, value: 999 }\n    references: [R1]\n",
         )
         .unwrap();
-        let extension = Arc::new(RejectingExtension(ExtensionMetadata {
+        let extension = RejectingExtension(ExtensionMetadata {
             id: id("rejector"),
             contract: ContractVersion::new(1),
             dependencies: Vec::new(),
             bindings: Vec::new(),
             ontology_requirements: OntologyRequirements::default(),
-        }));
-        let distribution = DistributionBuilder::new().with_core_extension(extension).build().unwrap();
-        let context = distribution.repository_context(root.path()).unwrap();
+        });
+        let application = Application::builder().with_core_extension(extension).build().unwrap();
+        let context = application.repository_context(root.path()).unwrap();
         let entity_before = fs::read(root.path().join("entities/Q1.yaml")).unwrap();
         let allocation_before = fs::read(root.path().join("id_allocation.yaml")).unwrap();
         let batch = knowledge_base_crud::write::StatementBatch::read(root.path().join("statements.yaml")).unwrap();

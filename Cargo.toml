@@ -3,6 +3,7 @@ members = [
     "crates/cli",
     "crates/crud",
     "crates/extension-framework",
+    "crates/extension-wikidata",
     "crates/ingestion-candidate-inventory",
     "crates/ingestion-retrieval",
     "crates/models",
@@ -28,7 +29,9 @@ dom_smoothie = "0.18"
 encoding_rs = "0.8"
 fs2 = "0.4"
 knowledge-base-crud = { version = "0.3.0", path = "crates/crud" }
+knowledge-base-cli = { version = "0.3.0", path = "crates/cli" }
 knowledge-base-extension-framework = { version = "0.3.0", path = "crates/extension-framework" }
+knowledge-base-extension-wikidata = { version = "0.3.0", path = "crates/extension-wikidata" }
 knowledge-base-ingestion-candidate-inventory = { version = "0.3.0", path = "crates/ingestion-candidate-inventory" }
 knowledge-base-ingestion-retrieval = { version = "0.3.0", path = "crates/ingestion-retrieval" }
 knowledge-base-models = { version = "0.3.0", path = "crates/models" }
@@ -39,6 +42,7 @@ pulldown-cmark = "0.13"
 reqwest = { version = "0.13", default-features = false }
 regex = "1.12"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 serde_yaml = "0.9"
 tempfile = "3"
 url = "2.5"

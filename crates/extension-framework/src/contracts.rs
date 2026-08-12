@@ -3,6 +3,7 @@ use crate::error::{FrameworkError, IdentifierError};
 use knowledge_base_models::{Cardinality, PropertyUsage, ValueType};
 use knowledge_base_validation::KnowledgeBaseValidator;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
@@ -47,9 +48,17 @@ impl<'de> Deserialize<'de> for ContractVersion {
 
 /// A unique lowercase kebab-case extension identifier.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ExtensionId(String);
+pub struct ExtensionId(Cow<'static, str>);
 
 impl ExtensionId {
+    /// Constructs a canonical extension identifier from a static literal.
+    ///
+    /// Invalid literals cause compilation to fail when used in a constant.
+    pub const fn from_static(value: &'static str) -> Self {
+        assert!(canonical_segments(value, b'-'), "extension identifier must be lowercase kebab-case");
+        Self(Cow::Borrowed(value))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -65,8 +74,8 @@ impl FromStr for ExtensionId {
     type Err = IdentifierError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        canonical_segments(value, '-')
-            .then(|| Self(value.to_owned()))
+        canonical_segments(value, b'-')
+            .then(|| Self(Cow::Owned(value.to_owned())))
             .ok_or_else(|| IdentifierError::new(value, "lowercase kebab-case"))
     }
 }
@@ -91,9 +100,17 @@ impl<'de> Deserialize<'de> for ExtensionId {
 
 /// A lowercase snake_case semantic-binding key.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct BindingKey(String);
+pub struct BindingKey(Cow<'static, str>);
 
 impl BindingKey {
+    /// Constructs a canonical semantic-binding key from a static literal.
+    ///
+    /// Invalid literals cause compilation to fail when used in a constant.
+    pub const fn from_static(value: &'static str) -> Self {
+        assert!(canonical_segments(value, b'_'), "binding key must be lowercase snake_case");
+        Self(Cow::Borrowed(value))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -109,8 +126,8 @@ impl FromStr for BindingKey {
     type Err = IdentifierError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        canonical_segments(value, '_')
-            .then(|| Self(value.to_owned()))
+        canonical_segments(value, b'_')
+            .then(|| Self(Cow::Owned(value.to_owned())))
             .ok_or_else(|| IdentifierError::new(value, "lowercase snake_case"))
     }
 }
@@ -135,10 +152,32 @@ impl<'de> Deserialize<'de> for BindingKey {
 
 /// Validates names whose segments start with a lowercase letter and then contain
 /// lowercase ASCII letters or digits. The separator joins, but never empties, segments.
-fn canonical_segments(value: &str, separator: char) -> bool {
-    !value.is_empty()
-        && value.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == separator as u8)
-        && value.split(separator).all(|segment| segment.as_bytes().first().is_some_and(u8::is_ascii_lowercase))
+const fn canonical_segments(value: &str, separator: u8) -> bool {
+    let bytes = value.as_bytes();
+    if bytes.is_empty() {
+        return false;
+    }
+
+    let mut index = 0;
+    let mut starts_segment = true;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if byte == separator {
+            if starts_segment {
+                return false;
+            }
+            starts_segment = true;
+        } else if starts_segment {
+            if !(byte >= b'a' && byte <= b'z') {
+                return false;
+            }
+            starts_segment = false;
+        } else if !((byte >= b'a' && byte <= b'z') || (byte >= b'0' && byte <= b'9')) {
+            return false;
+        }
+        index += 1;
+    }
+    !starts_segment
 }
 
 /// The ontology identifier kind expected by a semantic binding.
@@ -164,6 +203,16 @@ impl BindingReference {
     }
     pub fn key(&self) -> &BindingKey {
         &self.key
+    }
+
+    /// Constructs a canonical binding reference from static literals.
+    ///
+    /// Invalid literals cause compilation to fail when used in a constant.
+    pub const fn from_static(extension_id: &'static str, key: &'static str) -> Self {
+        Self {
+            extension_id: ExtensionId::from_static(extension_id),
+            key: BindingKey::from_static(key),
+        }
     }
 }
 
@@ -239,8 +288,7 @@ pub struct ExtensionMetadata {
 /// A concrete extension implementation without CLI coupling.
 pub trait KnowledgeBaseExtension: Send + Sync {
     fn metadata(&self) -> &ExtensionMetadata;
-    fn ontology_requirements(&self) -> &OntologyRequirements {
-        &self.metadata().ontology_requirements
+    fn validators(&self, _: &ResolvedBindings) -> Result<Vec<Arc<dyn KnowledgeBaseValidator>>, FrameworkError> {
+        Ok(Vec::new())
     }
-    fn validators(&self, bindings: &ResolvedBindings) -> Result<Vec<Arc<dyn KnowledgeBaseValidator>>, FrameworkError>;
 }
