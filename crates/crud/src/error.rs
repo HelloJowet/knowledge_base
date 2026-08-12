@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 #[non_exhaustive]
-pub enum Error {
+pub enum RepositoryError {
     Read { path: PathBuf, source: io::Error },
     ParseStatementBatch { path: PathBuf, source: serde_yaml::Error },
     ParseReference { path: PathBuf, source: serde_yaml::Error },
@@ -25,7 +25,7 @@ pub enum Error {
     Commit { message: String },
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for RepositoryError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Read { path, source } => write!(formatter, "cannot read {}: {source}", path.display()),
@@ -68,7 +68,7 @@ impl fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for RepositoryError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Read { source, .. } | Self::Write { source, .. } => Some(source),

@@ -7,7 +7,7 @@ pub mod reference;
 mod validate;
 
 use clap::Subcommand;
-use knowledge_base_crud::{Error, KnowledgeBase};
+use knowledge_base_crud::{KnowledgeBaseRepository, RepositoryError};
 use std::fmt;
 use std::io::{self, Write};
 use std::path::Path;
@@ -51,7 +51,7 @@ pub enum Command {
 
 #[derive(Debug)]
 pub enum CommandError {
-    Crud(Error),
+    Crud(RepositoryError),
     Retrieval(anyhow::Error),
     InvalidFilter(String),
     Serialization(serde_yaml::Error),
@@ -72,8 +72,8 @@ impl fmt::Display for CommandError {
     }
 }
 
-impl From<Error> for CommandError {
-    fn from(error: Error) -> Self {
+impl From<RepositoryError> for CommandError {
+    fn from(error: RepositoryError) -> Self {
         Self::Crud(error)
     }
 }
@@ -93,11 +93,11 @@ impl Command {
 pub fn execute(command: Command, root: Option<&Path>) -> Result<ExitCode, CommandError> {
     match command {
         Command::Validate => Ok(validate::execute(root.expect("validated command requires a knowledge base"))),
-        Command::Entity { command } => entity::execute(command, &KnowledgeBase::new(root.expect("entity command requires a knowledge base"))),
-        Command::EntityType { command } => entity_type::execute(command, &KnowledgeBase::new(root.expect("entity type command requires a knowledge base"))),
-        Command::Property { command } => property::execute(command, &KnowledgeBase::new(root.expect("property command requires a knowledge base"))),
-        Command::Reference { command } => reference::execute(command, &KnowledgeBase::new(root.expect("reference command requires a knowledge base"))),
-        Command::EntityContext { command } => entity_context::execute(command, &KnowledgeBase::new(root.expect("entity context command requires a knowledge base"))),
+        Command::Entity { command } => entity::execute(command, &KnowledgeBaseRepository::new(root.expect("entity command requires a knowledge base"))),
+        Command::EntityType { command } => entity_type::execute(command, &KnowledgeBaseRepository::new(root.expect("entity type command requires a knowledge base"))),
+        Command::Property { command } => property::execute(command, &KnowledgeBaseRepository::new(root.expect("property command requires a knowledge base"))),
+        Command::Reference { command } => reference::execute(command, &KnowledgeBaseRepository::new(root.expect("reference command requires a knowledge base"))),
+        Command::EntityContext { command } => entity_context::execute(command, &KnowledgeBaseRepository::new(root.expect("entity context command requires a knowledge base"))),
         Command::Ingestion { command } => ingestion::execute(command, root),
     }
 }

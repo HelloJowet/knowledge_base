@@ -1,4 +1,14 @@
-use knowledge_base_crud::{EntityFilter, KnowledgeBase};
+use knowledge_base_crud::{Entities, EntityFilter, KnowledgeBaseRepository};
+
+trait QueryRepository {
+    fn entities(&self) -> Entities<'_>;
+}
+impl QueryRepository for KnowledgeBaseRepository {
+    fn entities(&self) -> Entities<'_> {
+        self.read().entities()
+    }
+}
+type KnowledgeBase = KnowledgeBaseRepository;
 use knowledge_base_models::{PropertyId, Value};
 use std::fs;
 use std::path::Path;

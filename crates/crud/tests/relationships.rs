@@ -1,4 +1,4 @@
-use knowledge_base_crud::{KnowledgeBase, RelationshipDirection};
+use knowledge_base_crud::{KnowledgeBaseRepository, RelationshipDirection};
 use knowledge_base_models::EntityId;
 use std::fs;
 
@@ -28,9 +28,9 @@ fn relationship_service_sorts_then_pages_all_direct_edge_directions() {
         "\n  - id: S1\n    property: P3\n    value: { type: entity, value: Q1 }\n    references: [R1]",
     );
 
-    let knowledge_base = KnowledgeBase::new(root.path());
+    let knowledge_base = KnowledgeBaseRepository::new(root.path());
     let id = "Q1".parse::<EntityId>().unwrap();
-    let page = knowledge_base.entities().relationships(&id, 2, 1).unwrap();
+    let page = knowledge_base.read().entities().relationships(&id, 2, 1).unwrap();
 
     assert_eq!(page.entity, id);
     assert_eq!(page.offset, 1);
@@ -44,12 +44,12 @@ fn relationship_service_sorts_then_pages_all_direct_edge_directions() {
     assert_eq!(page.relationships[1].direction, RelationshipDirection::Incoming);
     assert_eq!(page.relationships[1].entity.id.as_str(), "Q3");
 
-    let first = knowledge_base.entities().relationships(&id, 1, 0).unwrap();
+    let first = knowledge_base.read().entities().relationships(&id, 1, 0).unwrap();
     assert_eq!(first.next_offset, Some(1));
     assert_eq!(first.relationships[0].direction, RelationshipDirection::SelfReference);
     assert_eq!(serde_yaml::to_string(&first.relationships[0].direction).unwrap(), "self\n");
 
-    let empty = knowledge_base.entities().relationships(&id, 5, 99).unwrap();
+    let empty = knowledge_base.read().entities().relationships(&id, 5, 99).unwrap();
     assert_eq!(empty.total, 3);
     assert!(empty.relationships.is_empty());
     assert_eq!(empty.next_offset, None);
@@ -62,7 +62,7 @@ fn relationship_service_rejects_a_zero_limit() {
     write_entity(root.path(), "Q1", "Root", " []");
     let id = "Q1".parse::<EntityId>().unwrap();
 
-    let error = KnowledgeBase::new(root.path()).entities().relationships(&id, 0, 0).unwrap_err();
+    let error = KnowledgeBaseRepository::new(root.path()).read().entities().relationships(&id, 0, 0).unwrap_err();
 
     assert!(error.to_string().contains("limit must be greater than zero"));
 }

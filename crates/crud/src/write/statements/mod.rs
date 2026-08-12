@@ -8,12 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ApplyMode {
-    Preview,
-    Commit,
-}
-
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct StatementBatch {

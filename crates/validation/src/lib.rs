@@ -3,7 +3,7 @@ mod diagnostic;
 mod input;
 mod validator;
 
-pub use additional_validator::{AdditionalValidator, ValidationContext, validate_repository_with};
+pub use additional_validator::{KnowledgeBaseValidator, ValidationContext, validate_repository_with};
 pub use diagnostic::{Diagnostic, ValidationLayer};
 
 use std::path::Path;

@@ -1,18 +1,18 @@
 use super::super::{CommandError, write_content};
 use chrono::{DateTime, NaiveDate};
-use knowledge_base_crud::{EntityFilter, KnowledgeBase};
+use knowledge_base_crud::{EntityFilter, KnowledgeBaseRepository};
 use knowledge_base_models::{EntityId, Property, PropertyId, Value, ValueType};
 use std::process::ExitCode;
 use url::Url;
 
-pub fn execute(knowledge_base: &KnowledgeBase, raw_filters: &[String], limit: usize, offset: usize) -> Result<ExitCode, CommandError> {
+pub fn execute(knowledge_base: &KnowledgeBaseRepository, raw_filters: &[String], limit: usize, offset: usize) -> Result<ExitCode, CommandError> {
     let filters = raw_filters.iter().map(|filter| parse_filter(knowledge_base, filter)).collect::<Result<Vec<_>, _>>()?;
-    let page = knowledge_base.entities().query(&filters, limit, offset)?;
+    let page = knowledge_base.read().entities().query(&filters, limit, offset)?;
     let output = serde_yaml::to_string(&page).map_err(CommandError::Serialization)?;
     write_content(&output)
 }
 
-fn parse_filter(knowledge_base: &KnowledgeBase, filter: &str) -> Result<EntityFilter, CommandError> {
+fn parse_filter(knowledge_base: &KnowledgeBaseRepository, filter: &str) -> Result<EntityFilter, CommandError> {
     let (property, raw_value) = filter
         .split_once('=')
         .ok_or_else(|| CommandError::InvalidFilter(format!("invalid entity filter {filter:?}; expected P<n>=value")))?;
@@ -22,7 +22,7 @@ fn parse_filter(knowledge_base: &KnowledgeBase, filter: &str) -> Result<EntityFi
     let property = property
         .parse::<PropertyId>()
         .map_err(|error| CommandError::InvalidFilter(format!("invalid entity filter {filter:?}: {error}")))?;
-    let source = knowledge_base.properties().read(&property)?;
+    let source = knowledge_base.read().properties().read(&property)?;
     let definition =
         serde_yaml::from_str::<Property>(&source).map_err(|error| CommandError::InvalidFilter(format!("cannot parse property {property} while resolving filter: {error}")))?;
     if definition.id != property {

@@ -2,8 +2,6 @@
 
 Loads and validates a complete knowledge-base directory.
 
-Validation targets the canonical 0.2.0 schema only. It does not provide compatibility parsing for earlier transit-owned record formats; see the repository [migration guide](../../MIGRATION.md).
-
 ```rust
 use knowledge_base_validation::validate_repository;
 
@@ -26,15 +24,15 @@ Diagnostics include the path, line when available, validation layer, related ide
 
 ## Domain validators
 
-Domain crates can add read-only rules without adding domain knowledge to this crate. Implement `AdditionalValidator` (or pass a closure) and call `validate_repository_with`:
+Domain crates can add read-only rules without adding domain knowledge to this crate. Implement `KnowledgeBaseValidator` (or pass a closure) and call `validate_repository_with`:
 
 ```rust
-use knowledge_base_validation::{AdditionalValidator, Diagnostic, ValidationContext, ValidationLayer, validate_repository_with};
+use knowledge_base_validation::{Diagnostic, KnowledgeBaseValidator, ValidationContext, ValidationLayer, validate_repository_with};
 use std::path::PathBuf;
 
 struct TransportValidator;
 
-impl AdditionalValidator for TransportValidator {
+impl KnowledgeBaseValidator for TransportValidator {
     fn validate(&self, context: &ValidationContext<'_>) -> Vec<Diagnostic> {
         let _entity = context.snapshot().entities().get(&"Q1".parse().unwrap());
         vec![Diagnostic {

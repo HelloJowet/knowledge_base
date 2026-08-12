@@ -24,7 +24,7 @@ impl Entities<'_> {
             return Err(Error::InvalidRequest("entity search limit must be greater than zero".to_owned()));
         }
 
-        let mut entities = load_entities(self.knowledge_base.root())?
+        let mut entities = load_entities(self.repository.root())?
             .into_iter()
             .filter(|entity| entity.labels.values().any(|label| normalize(&label.text).contains(&query)))
             .collect::<Vec<_>>();

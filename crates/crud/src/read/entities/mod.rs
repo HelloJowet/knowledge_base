@@ -1,23 +1,20 @@
 mod query;
-mod read;
+mod raw;
 mod relationships;
 mod search;
-mod statement;
 
+use crate::KnowledgeBaseRepository;
 pub use query::{EntitiesPage, EntityFilter};
 pub use relationships::{EntityRelationship, EntityRelationshipsPage, RelatedEntity, RelationshipDirection};
 pub use search::EntitySearchPage;
-pub use statement::{ApplyMode, ApplyStatementsOutcome, StatementBatch, StatementInput, StatementResult, StatementResultStatus};
-
-use crate::KnowledgeBase;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Entities<'a> {
-    knowledge_base: &'a KnowledgeBase,
+    pub(super) repository: &'a KnowledgeBaseRepository,
 }
 
 impl<'a> Entities<'a> {
-    pub(crate) fn new(knowledge_base: &'a KnowledgeBase) -> Self {
-        Self { knowledge_base }
+    pub(crate) fn new(repository: &'a KnowledgeBaseRepository) -> Self {
+        Self { repository }
     }
 }

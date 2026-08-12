@@ -6,20 +6,21 @@ Retrieve web pages into portable source bundles and register their sources as kn
 
 A retrieval bundle contains cleaned source HTML in `page.html` and versioned metadata in `retrieval.yaml`. `fetch_to_bundle` creates a uniquely named bundle under a chosen directory. `register_bundle` validates a bundle and registers or reuses its canonical reference through `knowledge-base-crud`.
 
-Fetching does not require a knowledge base. Registration needs a `KnowledgeBase` and can run in preview mode before it writes files.
+Fetching does not require a knowledge base. Registration needs a `KnowledgeBaseRepository` and can run in preview mode before it writes files.
 
 ## Usage
 
 ```rust
 use std::path::Path;
 
-use knowledge_base_crud::{ApplyMode, KnowledgeBase};
+use knowledge_base_crud::KnowledgeBaseRepository;
+use knowledge_base_crud::write::WriteMode;
 use knowledge_base_ingestion_retrieval::{fetch_to_bundle, register_bundle};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bundle = fetch_to_bundle("https://example.com/page", Path::new("temp/retrievals"))?;
-    let knowledge_base = KnowledgeBase::new(Path::new("knowledge_base"));
-    let outcome = register_bundle(&bundle, &knowledge_base, ApplyMode::Preview)?;
+    let repository = KnowledgeBaseRepository::new(Path::new("knowledge_base"));
+    let outcome = register_bundle(&bundle, &repository, WriteMode::Preview)?;
     println!("{}", outcome.reference);
     Ok(())
 }

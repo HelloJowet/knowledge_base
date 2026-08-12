@@ -2,20 +2,22 @@ use std::path::Path;
 
 use anyhow::{Context, Result, ensure};
 use chrono::{DateTime, NaiveDate};
-use knowledge_base_crud::{ApplyMode, KnowledgeBase, ReferenceDraft, ReferenceRegistrationOutcome};
+use knowledge_base_crud::KnowledgeBaseRepository;
+use knowledge_base_crud::write::{ReferenceDraft, ReferenceRegistrationOutcome, WriteMode};
 use url::Url;
 
 use crate::{RetrievalMetadata, load_metadata};
 
 /// Registers or reuses the reference represented by a retrieval bundle.
-pub fn register_bundle(bundle_directory: &Path, knowledge_base: &KnowledgeBase, mode: ApplyMode) -> Result<ReferenceRegistrationOutcome> {
+pub fn register_bundle(bundle_directory: &Path, repository: &KnowledgeBaseRepository, mode: WriteMode) -> Result<ReferenceRegistrationOutcome> {
     ensure!(bundle_directory.is_dir(), "retrieval bundle is not a directory: {}", bundle_directory.display());
     let page_path = bundle_directory.join("page.html");
     ensure!(page_path.is_file(), "retrieval bundle is missing {}", page_path.display());
 
     let metadata = load_metadata(bundle_directory)?;
     validate_metadata(&metadata)?;
-    knowledge_base
+    repository
+        .write()
         .references()
         .register(
             &ReferenceDraft {
@@ -92,6 +94,7 @@ mod tests {
 
     use super::*;
     use crate::save_bundle_in;
+    use knowledge_base_crud::write::ReferenceRegistrationStatus;
     use tempfile::tempdir;
 
     fn write_repository(root: &Path, next_reference: u64) {
@@ -124,13 +127,13 @@ mod tests {
         write_repository(repository.path(), 1);
         let bundles = tempdir().unwrap();
         let bundle = save_bundle_in("page", &metadata(), bundles.path()).unwrap();
-        let knowledge_base = KnowledgeBase::new(repository.path());
+        let knowledge_base = KnowledgeBaseRepository::new(repository.path());
 
-        let created = register_bundle(&bundle, &knowledge_base, ApplyMode::Commit).unwrap();
-        assert_eq!(created.status, knowledge_base_crud::ReferenceRegistrationStatus::Registered);
+        let created = register_bundle(&bundle, &knowledge_base, WriteMode::Commit).unwrap();
+        assert_eq!(created.status, ReferenceRegistrationStatus::Registered);
         assert_eq!(created.reference.to_string(), "R1");
-        let existing = register_bundle(&bundle, &knowledge_base, ApplyMode::Commit).unwrap();
-        assert_eq!(existing.status, knowledge_base_crud::ReferenceRegistrationStatus::Existing);
+        let existing = register_bundle(&bundle, &knowledge_base, WriteMode::Commit).unwrap();
+        assert_eq!(existing.status, ReferenceRegistrationStatus::Existing);
     }
 
     #[test]
@@ -141,15 +144,15 @@ mod tests {
         let mut invalid = metadata();
         invalid.schema_version = 2;
         let bundle = save_bundle_in("page", &invalid, bundles.path()).unwrap();
-        let knowledge_base = KnowledgeBase::new(repository.path());
-        assert!(register_bundle(&bundle, &knowledge_base, ApplyMode::Commit).is_err());
+        let knowledge_base = KnowledgeBaseRepository::new(repository.path());
+        assert!(register_bundle(&bundle, &knowledge_base, WriteMode::Commit).is_err());
 
         let missing = bundles.path().join("missing");
-        assert!(register_bundle(&missing, &knowledge_base, ApplyMode::Commit).is_err());
+        assert!(register_bundle(&missing, &knowledge_base, WriteMode::Commit).is_err());
 
         let valid = save_bundle_in("page", &metadata(), bundles.path()).unwrap();
-        let preview = register_bundle(&valid, &knowledge_base, ApplyMode::Preview).unwrap();
-        assert_eq!(preview.status, knowledge_base_crud::ReferenceRegistrationStatus::Previewed);
+        let preview = register_bundle(&valid, &knowledge_base, WriteMode::Preview).unwrap();
+        assert_eq!(preview.status, ReferenceRegistrationStatus::Previewed);
         assert!(!repository.path().join("references/R1.yaml").exists());
     }
 }

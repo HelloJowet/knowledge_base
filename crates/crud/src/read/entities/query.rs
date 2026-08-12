@@ -32,7 +32,7 @@ impl Entities<'_> {
             return Err(Error::InvalidRequest("entity query limit must be greater than zero".to_owned()));
         }
 
-        let mut entities = load_entities(self.knowledge_base.root())?;
+        let mut entities = load_entities(self.repository.root())?;
         entities.retain(|entity| {
             filters.iter().all(|filter| {
                 entity

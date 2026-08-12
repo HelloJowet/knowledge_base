@@ -32,11 +32,11 @@ impl<'a> ValidationContext<'a> {
 ///
 /// Diagnostics must use paths relative to `repository`, so they remain meaningful when
 /// mutations validate a temporary staged copy.
-pub trait AdditionalValidator: Send + Sync {
+pub trait KnowledgeBaseValidator: Send + Sync {
     fn validate(&self, context: &ValidationContext<'_>) -> Vec<Diagnostic>;
 }
 
-impl<F> AdditionalValidator for F
+impl<F> KnowledgeBaseValidator for F
 where
     F: for<'a> Fn(&ValidationContext<'a>) -> Vec<Diagnostic> + Send + Sync,
 {
@@ -49,7 +49,7 @@ where
 ///
 /// All validators run even when another validator reports diagnostics. The returned diagnostics
 /// are sorted deterministically by path, line, identifier, message, and validation layer.
-pub fn validate_repository_with<'a>(root: impl AsRef<Path>, validators: impl IntoIterator<Item = &'a dyn AdditionalValidator>) -> Vec<Diagnostic> {
+pub fn validate_repository_with<'a>(root: impl AsRef<Path>, validators: impl IntoIterator<Item = &'a dyn KnowledgeBaseValidator>) -> Vec<Diagnostic> {
     let root = root.as_ref();
     let mut diagnostics = validator::validate_repository(root);
     let validators = validators.into_iter().collect::<Vec<_>>();

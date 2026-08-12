@@ -1,10 +1,13 @@
 use crate::Error;
 use fs2::FileExt;
-use knowledge_base_validation::{AdditionalValidator, validate_repository_with};
+use knowledge_base_validation::{KnowledgeBaseValidator, validate_repository_with};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use tempfile::{NamedTempFile, TempPath};
+
+mod execute;
+pub(crate) use execute::{MutationDisposition, PlannedMutation, execute};
 
 const LOCK_FILE: &str = ".knowledge-base.lock";
 
@@ -40,7 +43,7 @@ impl Drop for MutationLock {
     }
 }
 
-pub(crate) fn validate_staged(root: &Path, edits: &[FileEdit], validators: &[std::sync::Arc<dyn AdditionalValidator>]) -> Result<(), Error> {
+pub(crate) fn validate_staged(root: &Path, edits: &[FileEdit], validators: &[std::sync::Arc<dyn KnowledgeBaseValidator>]) -> Result<(), Error> {
     let staging = tempfile::tempdir().map_err(|source| Error::Write {
         path: std::env::temp_dir(),
         source,

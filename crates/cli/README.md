@@ -2,8 +2,6 @@
 
 This crate provides the `knowledge-base` executable for validating, reading, querying, and updating a file-based knowledge base.
 
-It supports the canonical 0.2.0 schema only. It does not accept the legacy transit-owned schema; migrate existing repositories before use with the repository [migration guide](../../MIGRATION.md).
-
 ## Installation
 
 Install the executable from crates.io:

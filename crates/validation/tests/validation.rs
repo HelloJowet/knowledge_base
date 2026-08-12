@@ -1,4 +1,4 @@
-use knowledge_base_validation::{AdditionalValidator, Diagnostic, ValidationLayer, validate_repository, validate_repository_with};
+use knowledge_base_validation::{Diagnostic, KnowledgeBaseValidator, ValidationLayer, validate_repository, validate_repository_with};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -67,7 +67,7 @@ fn additional_validators_share_a_snapshot_and_their_diagnostics_are_sorted_with_
             message: "first".to_owned(),
         }]
     };
-    let validators: [&dyn AdditionalValidator; 2] = [&first, &second];
+    let validators: [&dyn KnowledgeBaseValidator; 2] = [&first, &second];
 
     let diagnostics = validate_repository_with(&root, validators);
 
@@ -95,7 +95,7 @@ fn snapshot_loading_failure_skips_domain_validators_without_duplicate_diagnostic
         Vec::new()
     };
 
-    let diagnostics = validate_repository_with(root.path(), [&validator as &dyn AdditionalValidator]);
+    let diagnostics = validate_repository_with(root.path(), [&validator as &dyn KnowledgeBaseValidator]);
 
     assert_eq!(*calls.lock().unwrap(), 0);
     assert!(diagnostics.len() > 1);

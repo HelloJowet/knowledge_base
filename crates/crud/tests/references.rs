@@ -1,6 +1,19 @@
-use knowledge_base_crud::{ApplyMode, Error, KnowledgeBase, ReferenceDraft, ReferenceRegistrationStatus};
+use knowledge_base_crud::write::{ReferenceDraft, ReferenceRegistrationStatus, References, WriteMode};
+use knowledge_base_crud::{KnowledgeBaseRepository, RepositoryError};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+trait ReferenceRepository {
+    fn references(&self) -> References<'_>;
+}
+impl ReferenceRepository for KnowledgeBaseRepository {
+    fn references(&self) -> References<'_> {
+        self.write().references()
+    }
+}
+type KnowledgeBase = KnowledgeBaseRepository;
+type ApplyMode = WriteMode;
+type Error = RepositoryError;
 
 fn fixture() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..").join("fixtures/valid/minimal")

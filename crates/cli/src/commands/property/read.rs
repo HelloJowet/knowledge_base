@@ -1,8 +1,8 @@
 use super::super::{CommandError, write_content};
-use knowledge_base_crud::KnowledgeBase;
+use knowledge_base_crud::KnowledgeBaseRepository;
 use knowledge_base_models::PropertyId;
 use std::process::ExitCode;
 
-pub fn execute(knowledge_base: &KnowledgeBase, id: &PropertyId) -> Result<ExitCode, CommandError> {
-    write_content(&knowledge_base.properties().read(id)?)
+pub fn execute(repository: &KnowledgeBaseRepository, id: &PropertyId) -> Result<ExitCode, CommandError> {
+    write_content(&repository.read().properties().read(id)?)
 }

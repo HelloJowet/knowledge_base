@@ -1,7 +1,7 @@
 use super::edit::append_statements;
 use super::{StatementBatch, StatementResult, StatementResultStatus};
-use crate::mutation::FileEdit;
-use crate::{Error, resource};
+use crate::write::execution::FileEdit;
+use crate::{Error, filesystem};
 use knowledge_base_models::{Entity, EntityId, Statement, StatementId};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -106,7 +106,7 @@ impl<'a> StatementPlanner<'a> {
     }
 
     fn load_entity(&self, id: EntityId) -> Result<(EntityId, EntityState), Error> {
-        let path = resource::path(self.root, "entities", id.as_str(), "yaml");
+        let path = filesystem::path(self.root, "entities", id.as_str(), "yaml");
         let original = fs::read(&path).map_err(|source| Error::Read { path: path.clone(), source })?;
         let entity = serde_yaml::from_slice::<Entity>(&original).map_err(|source| Error::ParseEntity { path: path.clone(), source })?;
         let maximum = entity.statements.iter().map(|statement| statement.id.number()).max().unwrap_or(0);
@@ -140,7 +140,7 @@ fn allocate_statement_id(entity: &EntityId, next_id: &mut Option<u64>) -> Result
 #[cfg(test)]
 mod tests {
     use super::StatementPlanner;
-    use crate::{StatementBatch, StatementResultStatus};
+    use crate::write::{StatementBatch, StatementResultStatus};
     use std::fs;
 
     fn repository(entity_source: &str) -> tempfile::TempDir {

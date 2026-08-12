@@ -1,4 +1,4 @@
-use knowledge_base_crud::{Error, KnowledgeBase};
+use knowledge_base_crud::{KnowledgeBaseRepository, RepositoryError};
 use knowledge_base_models::{EntityId, PropertyId};
 use knowledge_base_snapshot::Error as SnapshotError;
 use std::fs;
@@ -11,7 +11,7 @@ fn fixture() -> PathBuf {
 
 #[test]
 fn snapshot_loads_all_structured_resources_in_identifier_order() {
-    let snapshot = KnowledgeBase::new(fixture()).snapshot().expect("snapshot loads");
+    let snapshot = KnowledgeBaseRepository::new(fixture()).read().snapshot().expect("snapshot loads");
 
     assert_eq!(snapshot.entities().keys().map(|id| id.as_str()).collect::<Vec<_>>(), ["Q1", "Q2"]);
     assert_eq!(snapshot.entity_types().keys().map(|id| id.as_str()).collect::<Vec<_>>(), ["T1", "T2"]);
@@ -42,9 +42,9 @@ fn snapshot_rejects_non_yaml_managed_resource() {
     let path = repository.path().join("entities/notes.txt");
     fs::write(&path, "not managed").unwrap();
 
-    let error = KnowledgeBase::new(repository.path()).snapshot().expect_err("non-YAML file is rejected");
+    let error = KnowledgeBaseRepository::new(repository.path()).read().snapshot().expect_err("non-YAML file is rejected");
 
-    assert!(matches!(error, Error::Snapshot(SnapshotError::InvalidSnapshot { path: error_path, .. }) if error_path == path));
+    assert!(matches!(error, RepositoryError::Snapshot(SnapshotError::InvalidSnapshot { path: error_path, .. }) if error_path == path));
 }
 
 #[test]
@@ -54,7 +54,10 @@ fn snapshot_rejects_filename_identifier_mismatch() {
     let path = repository.path().join("entities/Q99.yaml");
     fs::rename(old_path, &path).unwrap();
 
-    let error = KnowledgeBase::new(repository.path()).snapshot().expect_err("mismatched filename is rejected");
+    let error = KnowledgeBaseRepository::new(repository.path())
+        .read()
+        .snapshot()
+        .expect_err("mismatched filename is rejected");
 
-    assert!(matches!(error, Error::Snapshot(SnapshotError::InvalidSnapshot { path: error_path, .. }) if error_path == path));
+    assert!(matches!(error, RepositoryError::Snapshot(SnapshotError::InvalidSnapshot { path: error_path, .. }) if error_path == path));
 }

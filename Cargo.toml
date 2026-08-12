@@ -2,6 +2,7 @@
 members = [
     "crates/cli",
     "crates/crud",
+    "crates/extension-framework",
     "crates/ingestion-candidate-inventory",
     "crates/ingestion-retrieval",
     "crates/models",
@@ -27,6 +28,7 @@ dom_smoothie = "0.18"
 encoding_rs = "0.8"
 fs2 = "0.4"
 knowledge-base-crud = { version = "0.3.0", path = "crates/crud" }
+knowledge-base-extension-framework = { version = "0.3.0", path = "crates/extension-framework" }
 knowledge-base-ingestion-candidate-inventory = { version = "0.3.0", path = "crates/ingestion-candidate-inventory" }
 knowledge-base-ingestion-retrieval = { version = "0.3.0", path = "crates/ingestion-retrieval" }
 knowledge-base-models = { version = "0.3.0", path = "crates/models" }

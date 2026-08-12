@@ -1,5 +1,5 @@
-use super::Entities;
-use crate::{Error, resource};
+use super::{Entities, query::load_entities};
+use crate::{Error, filesystem};
 use knowledge_base_models::{Entity, EntityId, PropertyId, StatementId, Value};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -56,7 +56,7 @@ impl Entities<'_> {
 
         // Resolve the canonical file first so a missing requested entity remains a
         // normal resource-read error, even if another file declares the same ID.
-        let requested_path = resource::path(self.knowledge_base.root(), "entities", id.as_str(), "yaml");
+        let requested_path = filesystem::path(self.repository.root(), "entities", id.as_str(), "yaml");
         let requested = parse_entity(&requested_path)?;
         if &requested.id != id {
             return Err(Error::InvalidRepository(format!(
@@ -67,7 +67,7 @@ impl Entities<'_> {
             )));
         }
 
-        let entities = load_entities(self.knowledge_base.root())?;
+        let entities = load_entities(self.repository.root())?;
         let mut index = BTreeMap::new();
         for entity in &entities {
             if index.insert(entity.id.clone(), entity).is_some() {
@@ -112,22 +112,6 @@ impl Entities<'_> {
             relationships,
         })
     }
-}
-
-fn load_entities(root: &Path) -> Result<Vec<Entity>, Error> {
-    let directory = root.join("entities");
-    let entries = fs::read_dir(&directory).map_err(|source| Error::Read { path: directory.clone(), source })?;
-    let mut paths = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|source| Error::Read { path: directory.clone(), source })?;
-        let path = entry.path();
-        let file_type = entry.file_type().map_err(|source| Error::Read { path: path.clone(), source })?;
-        if file_type.is_file() && path.extension().and_then(|extension| extension.to_str()) == Some("yaml") {
-            paths.push(path);
-        }
-    }
-    paths.sort();
-    paths.iter().map(|path| parse_entity(path.as_path())).collect()
 }
 
 fn parse_entity(path: &Path) -> Result<Entity, Error> {

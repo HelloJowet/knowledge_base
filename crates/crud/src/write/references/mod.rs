@@ -1,5 +1,6 @@
-use crate::mutation::{FileEdit, MutationLock, commit, validate_staged};
-use crate::{ApplyMode, Error, KnowledgeBase, resource};
+use crate::write::WriteMode;
+use crate::write::execution::{FileEdit, MutationDisposition, PlannedMutation, execute};
+use crate::{Error, KnowledgeBaseRepository, filesystem};
 use chrono::{DateTime, NaiveDate};
 use knowledge_base_models::{IdAllocation, Reference, ReferenceId};
 use language_tags::LanguageTag;
@@ -10,7 +11,7 @@ use url::Url;
 
 #[derive(Clone, Copy, Debug)]
 pub struct References<'a> {
-    knowledge_base: &'a KnowledgeBase,
+    repository: &'a KnowledgeBaseRepository,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -39,47 +40,44 @@ pub struct ReferenceRegistrationOutcome {
 }
 
 impl<'a> References<'a> {
-    pub(crate) fn new(knowledge_base: &'a KnowledgeBase) -> Self {
-        Self { knowledge_base }
+    pub(crate) fn new(repository: &'a KnowledgeBaseRepository) -> Self {
+        Self { repository }
     }
 
-    pub fn read(&self, id: &ReferenceId) -> Result<String, Error> {
-        resource::read(self.knowledge_base.root(), "references", id.as_str(), "yaml")
-    }
-
-    pub fn register(&self, draft: &ReferenceDraft, mode: ApplyMode) -> Result<ReferenceRegistrationOutcome, Error> {
+    pub fn register(&self, draft: &ReferenceDraft, mode: WriteMode) -> Result<ReferenceRegistrationOutcome, Error> {
         validate_draft(draft)?;
-        let root = self.knowledge_base.root();
-        let _lock = MutationLock::acquire(root)?;
-
-        let baseline = self.knowledge_base.validate();
-        if !baseline.is_empty() {
-            return Err(Error::Validation(baseline));
-        }
-
-        if let Some(reference) = find_reference_by_url(root, &draft.url)? {
-            validate_staged(root, &[], self.knowledge_base.additional_validators())?;
-            return Ok(ReferenceRegistrationOutcome {
+        let (plan, disposition) = execute(self.repository, mode, || {
+            if let Some(reference) = find_reference_by_url(self.repository.root(), &draft.url)? {
+                return Ok(PlannedMutation::new(RegistrationPlan::Existing(reference), Vec::new(), false));
+            }
+            let (reference, edits) = plan_registration(self.repository.root(), draft)?;
+            Ok(PlannedMutation::new(RegistrationPlan::New(reference), edits, true))
+        })?;
+        Ok(match (plan, disposition) {
+            (RegistrationPlan::Existing(reference), MutationDisposition::NotCommitted) => ReferenceRegistrationOutcome {
                 status: ReferenceRegistrationStatus::Existing,
                 reference,
-            });
-        }
-
-        let (reference, edits) = plan_registration(root, draft)?;
-        validate_staged(root, &edits, self.knowledge_base.additional_validators())?;
-        if mode == ApplyMode::Preview {
-            return Ok(ReferenceRegistrationOutcome {
+            },
+            (RegistrationPlan::New(reference), MutationDisposition::Previewed) => ReferenceRegistrationOutcome {
                 status: ReferenceRegistrationStatus::Previewed,
                 reference,
-            });
-        }
-
-        commit(&edits)?;
-        Ok(ReferenceRegistrationOutcome {
-            status: ReferenceRegistrationStatus::Registered,
-            reference,
+            },
+            (RegistrationPlan::New(reference), MutationDisposition::Committed) => ReferenceRegistrationOutcome {
+                status: ReferenceRegistrationStatus::Registered,
+                reference,
+            },
+            (_, disposition) => {
+                return Err(Error::Commit {
+                    message: format!("invalid reference registration disposition: {disposition:?}"),
+                });
+            }
         })
     }
+}
+
+enum RegistrationPlan {
+    Existing(ReferenceId),
+    New(ReferenceId),
 }
 
 fn validate_draft(draft: &ReferenceDraft) -> Result<(), Error> {
@@ -170,7 +168,7 @@ fn plan_registration(root: &std::path::Path, draft: &ReferenceDraft) -> Result<(
         .checked_add(1)
         .ok_or_else(|| Error::InvalidRequest("cannot allocate another reference identifier".to_owned()))?;
     let reference = ReferenceId::from_str(&format!("R{next}")).expect("positive allocation counters form valid reference identifiers");
-    let reference_path = resource::path(root, "references", reference.as_str(), "yaml");
+    let reference_path = filesystem::path(root, "references", reference.as_str(), "yaml");
     allocation.next.reference = incremented;
     let reference_source = serde_yaml::to_string(&Reference {
         id: reference.clone(),

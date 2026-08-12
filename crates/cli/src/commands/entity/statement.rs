@@ -1,6 +1,7 @@
 use super::super::{CommandError, write_content};
 use clap::Subcommand;
-use knowledge_base_crud::{ApplyMode, KnowledgeBase, StatementBatch};
+use knowledge_base_crud::KnowledgeBaseRepository;
+use knowledge_base_crud::write::{StatementBatch, WriteMode};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -16,12 +17,12 @@ pub enum Command {
     },
 }
 
-pub fn execute(command: Command, knowledge_base: &KnowledgeBase) -> Result<ExitCode, CommandError> {
+pub fn execute(command: Command, knowledge_base: &KnowledgeBaseRepository) -> Result<ExitCode, CommandError> {
     match command {
         Command::Apply { manifest, dry_run } => {
             let batch = StatementBatch::read(manifest)?;
-            let mode = if dry_run { ApplyMode::Preview } else { ApplyMode::Commit };
-            let outcome = knowledge_base.entities().apply_statements(&batch, mode)?;
+            let mode = if dry_run { WriteMode::Preview } else { WriteMode::Commit };
+            let outcome = knowledge_base.write().statements().apply(&batch, mode)?;
             let rejected = outcome.was_rejected();
             let output = serde_yaml::to_string(&outcome).map_err(CommandError::Serialization)?;
             write_content(&output)?;

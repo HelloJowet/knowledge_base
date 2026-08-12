@@ -1,6 +1,7 @@
 use super::super::{CommandError, write_content};
 use chrono::{SecondsFormat, Utc};
-use knowledge_base_crud::{ApplyMode, KnowledgeBase, ReferenceDraft};
+use knowledge_base_crud::KnowledgeBaseRepository;
+use knowledge_base_crud::write::{ReferenceDraft, WriteMode};
 use std::process::ExitCode;
 
 pub(super) struct Args {
@@ -13,7 +14,7 @@ pub(super) struct Args {
     pub(super) dry_run: bool,
 }
 
-pub fn execute(knowledge_base: &KnowledgeBase, args: Args) -> Result<ExitCode, CommandError> {
+pub fn execute(repository: &KnowledgeBaseRepository, args: Args) -> Result<ExitCode, CommandError> {
     let draft = ReferenceDraft {
         url: args.url,
         title: args.title,
@@ -23,8 +24,8 @@ pub fn execute(knowledge_base: &KnowledgeBase, args: Args) -> Result<ExitCode, C
         retrieved_at: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
         archive_url: args.archive_url,
     };
-    let mode = if args.dry_run { ApplyMode::Preview } else { ApplyMode::Commit };
-    let outcome = knowledge_base.references().register(&draft, mode)?;
+    let mode = if args.dry_run { WriteMode::Preview } else { WriteMode::Commit };
+    let outcome = repository.write().references().register(&draft, mode)?;
     let output = serde_yaml::to_string(&outcome).map_err(CommandError::Serialization)?;
     write_content(&output)
 }

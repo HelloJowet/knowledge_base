@@ -1065,6 +1065,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "knowledge-base-extension-framework"
+version = "0.3.0"
+dependencies = [
+ "knowledge-base-models",
+ "knowledge-base-validation",
+]
+
+[[package]]
 name = "knowledge-base-ingestion-candidate-inventory"
 version = "0.3.0"
 dependencies = [
