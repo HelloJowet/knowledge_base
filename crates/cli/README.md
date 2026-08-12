@@ -18,7 +18,8 @@ Every executable command reads the knowledge-base root from `KNOWLEDGE_BASE_PATH
 export KNOWLEDGE_BASE_PATH="/absolute/path/to/knowledge-base"
 ```
 
-`--help` and `--version` do not require `KNOWLEDGE_BASE_PATH`.
+`ingestion retrieval fetch`, `--help`, and `--version` do not require
+`KNOWLEDGE_BASE_PATH`.
 
 ## Commands
 
@@ -27,6 +28,31 @@ Validate the complete knowledge base:
 ```sh
 knowledge-base validate
 ```
+
+Validate an ingestion candidate inventory against the configured knowledge
+base:
+
+```sh
+knowledge-base ingestion candidate-inventory validate \
+  /path/to/bundle/ingestion_candidate_inventory.yaml
+```
+
+The inventory must use that exact filename and have its declared `page.html`
+beside it. Existing `candidate_inventory.yaml` files must be renamed.
+
+Fetch a webpage into a uniquely named retrieval bundle, then register or reuse
+its canonical source reference:
+
+```sh
+knowledge-base ingestion retrieval fetch https://example.com/page
+knowledge-base ingestion retrieval fetch https://example.com/page --output-root /tmp/retrievals
+knowledge-base ingestion retrieval register /tmp/retrievals/fetch-XXXXXX
+knowledge-base ingestion retrieval register /tmp/retrievals/fetch-XXXXXX --dry-run
+```
+
+A retrieval bundle contains cleaned `page.html` and versioned `retrieval.yaml`
+metadata. Registration validates the bundle and produces the standard reference
+registration YAML result.
 
 Read stored resources by their typed identifiers:
 

@@ -1,0 +1,24 @@
+[package]
+name = "knowledge-base-ingestion-candidate-inventory"
+description = "Models and validation for knowledge-base ingestion candidate inventories"
+readme = "README.md"
+keywords = ["knowledge-base", "yaml", "ingestion", "validation"]
+categories = ["data-structures", "development-tools::debugging"]
+edition.workspace = true
+version.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+chrono.workspace = true
+knowledge-base-models.workspace = true
+knowledge-base-snapshot.workspace = true
+knowledge-base-validation.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

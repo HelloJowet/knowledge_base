@@ -4,7 +4,7 @@ The `knowledge-base` command validates, reads, queries, and updates a file-based
 
 ## Setup
 
-Every executable command reads the knowledge-base root from `KNOWLEDGE_BASE_PATH`:
+Most executable commands read the knowledge-base root from `KNOWLEDGE_BASE_PATH`:
 
 ```sh
 export KNOWLEDGE_BASE_PATH="$PWD/fixtures/valid/minimal"
@@ -23,11 +23,14 @@ cargo build --release -p knowledge-base-cli
 KNOWLEDGE_BASE_PATH=/path/to/knowledge-base target/release/knowledge-base validate
 ```
 
-`--help` and `--version` do not require `KNOWLEDGE_BASE_PATH`.
+`ingestion retrieval fetch`, `--help`, and `--version` do not require `KNOWLEDGE_BASE_PATH`.
 
 ## Commands
 
 - [Validate a knowledge base](validate.md) with `validate`
+- [Work with ingestion artifacts](../ingestion.md)
+- [Retrieve and register webpages](ingestion-retrieval.md) with `ingestion retrieval`
+- [Validate an ingestion candidate inventory](ingestion-candidate-inventory.md) with `ingestion candidate-inventory validate`
 - [Read stored resources](read.md) with the resource-specific `read` commands
 - [Query entities](query.md) with `entity query`
 - [Search entity labels](query.md#search-entity-labels) with `entity search`

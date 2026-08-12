@@ -16,15 +16,19 @@ struct Cli {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    let root = match knowledge_base_path() {
-        Ok(root) => root,
-        Err(message) => {
-            eprintln!("{message}");
-            return ExitCode::FAILURE;
+    let root = if cli.command.requires_knowledge_base() {
+        match knowledge_base_path() {
+            Ok(root) => Some(root),
+            Err(message) => {
+                eprintln!("{message}");
+                return ExitCode::FAILURE;
+            }
         }
+    } else {
+        None
     };
 
-    match commands::execute(cli.command, &root) {
+    match commands::execute(cli.command, root.as_deref()) {
         Ok(exit_code) => exit_code,
         Err(error) => {
             eprintln!("{error}");

@@ -84,6 +84,147 @@ fn validate_uses_the_environment_configured_root() {
 }
 
 #[test]
+fn ingestion_candidate_inventory_validation_uses_the_generic_cli() {
+    let bundle = tempfile::tempdir().expect("temporary retrieval bundle");
+    fs::write(bundle.path().join("page.html"), "page").expect("write source page");
+    let inventory = bundle.path().join("ingestion_candidate_inventory.yaml");
+    fs::write(
+        &inventory,
+        "source_reference: R1\nsource_file: page.html\nevidence: []\ndraft_entity_types: []\ndraft_properties: []\narticle_results: []\ncandidates: []\n",
+    )
+    .expect("write inventory");
+
+    let output = knowledge_base_command()
+        .args(["ingestion", "candidate-inventory", "validate"])
+        .arg(&inventory)
+        .env("KNOWLEDGE_BASE_PATH", fixture())
+        .output()
+        .expect("validate ingestion candidate inventory");
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        format!("valid ingestion candidate inventory: {}\n", inventory.display())
+    );
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn ingestion_candidate_inventory_diagnostics_use_stderr_and_fail() {
+    let bundle = tempfile::tempdir().expect("temporary retrieval bundle");
+    fs::write(bundle.path().join("page.html"), "page").expect("write source page");
+    let inventory = bundle.path().join("ingestion_candidate_inventory.yaml");
+    fs::write(
+        &inventory,
+        "source_reference: R999\nsource_file: page.html\nevidence: []\ndraft_entity_types: []\ndraft_properties: []\narticle_results: []\ncandidates: []\n",
+    )
+    .expect("write inventory");
+
+    let output = knowledge_base_command()
+        .args(["ingestion", "candidate-inventory", "validate"])
+        .arg(&inventory)
+        .env("KNOWLEDGE_BASE_PATH", fixture())
+        .output()
+        .expect("validate invalid ingestion candidate inventory");
+
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unresolved production reference R999"));
+}
+
+#[test]
+fn ingestion_candidate_inventory_rejects_legacy_filename_and_bad_snapshot() {
+    let bundle = tempfile::tempdir().expect("temporary retrieval bundle");
+    let legacy = bundle.path().join("candidate_inventory.yaml");
+    fs::write(&legacy, "ignored").expect("write legacy inventory");
+    let legacy_output = knowledge_base_command()
+        .args(["ingestion", "candidate-inventory", "validate"])
+        .arg(&legacy)
+        .env("KNOWLEDGE_BASE_PATH", fixture())
+        .output()
+        .expect("validate legacy inventory path");
+    assert!(!legacy_output.status.success());
+    assert!(legacy_output.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&legacy_output.stderr).contains("filename must be ingestion_candidate_inventory.yaml"));
+
+    let missing_root = bundle.path().join("missing-knowledge-base");
+    let snapshot_output = knowledge_base_command()
+        .args(["ingestion", "candidate-inventory", "validate"])
+        .arg(bundle.path().join("ingestion_candidate_inventory.yaml"))
+        .env("KNOWLEDGE_BASE_PATH", missing_root)
+        .output()
+        .expect("validate with missing snapshot");
+    assert!(!snapshot_output.status.success());
+    assert!(snapshot_output.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&snapshot_output.stderr).contains("cannot read"));
+}
+
+#[test]
+fn ingestion_candidate_inventory_help_is_available_without_configuration() {
+    let output = knowledge_base_command()
+        .args(["ingestion", "candidate-inventory", "validate", "--help"])
+        .env_remove("KNOWLEDGE_BASE_PATH")
+        .output()
+        .expect("show ingestion validation help");
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("ingestion_candidate_inventory.yaml"));
+}
+
+#[test]
+fn ingestion_retrieval_commands_have_the_expected_configuration_boundary() {
+    let fetch_help = knowledge_base_command()
+        .args(["ingestion", "retrieval", "fetch", "--help"])
+        .env_remove("KNOWLEDGE_BASE_PATH")
+        .output()
+        .expect("show retrieval fetch help");
+    assert!(fetch_help.status.success(), "{}", String::from_utf8_lossy(&fetch_help.stderr));
+    assert!(String::from_utf8_lossy(&fetch_help.stdout).contains("Web page URL to fetch"));
+
+    let register_without_root = knowledge_base_command()
+        .args(["ingestion", "retrieval", "register", "/tmp/bundle"])
+        .env_remove("KNOWLEDGE_BASE_PATH")
+        .output()
+        .expect("register retrieval bundle without configuration");
+    assert!(!register_without_root.status.success());
+    assert!(register_without_root.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&register_without_root.stderr).contains("KNOWLEDGE_BASE_PATH must be set"));
+}
+
+#[test]
+fn ingestion_retrieval_registers_and_previews_a_bundle() {
+    let root = copied_fixture();
+    let bundle = tempfile::tempdir().expect("temporary retrieval bundle");
+    fs::write(bundle.path().join("page.html"), "page").expect("write page");
+    fs::write(
+        bundle.path().join("retrieval.yaml"),
+        "schema_version: 1\nrequested_url: https://example.com/start\nurl: https://example.com/page\ntitle: Example\nsource_language: en\nretrieved_at: '2026-08-03T13:20:03Z'\n",
+    )
+    .expect("write metadata");
+
+    let preview = knowledge_base_command()
+        .args(["ingestion", "retrieval", "register"])
+        .arg(bundle.path())
+        .arg("--dry-run")
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("preview bundle registration");
+    assert!(preview.status.success(), "{}", String::from_utf8_lossy(&preview.stderr));
+    assert!(String::from_utf8_lossy(&preview.stdout).contains("status: previewed"));
+    assert!(!root.path().join("references/R2.yaml").exists());
+
+    let registered = knowledge_base_command()
+        .args(["ingestion", "retrieval", "register"])
+        .arg(bundle.path())
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("register bundle");
+    assert!(registered.status.success(), "{}", String::from_utf8_lossy(&registered.stderr));
+    assert!(String::from_utf8_lossy(&registered.stdout).contains("status: registered"));
+    assert!(root.path().join("references/R2.yaml").is_file());
+}
+
+#[test]
 fn configured_root_is_required_for_executable_commands() {
     for value in [None, Some("")] {
         let mut command = knowledge_base_command();

@@ -12,10 +12,14 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
 knowledge-base-crud.workspace = true
+knowledge-base-ingestion-candidate-inventory.workspace = true
+knowledge-base-ingestion-retrieval.workspace = true
 knowledge-base-models.workspace = true
+knowledge-base-snapshot.workspace = true
 knowledge-base-validation.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true

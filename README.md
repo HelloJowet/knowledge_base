@@ -44,24 +44,11 @@ knowledge-base validate
 
 See the [CLI documentation](docs/cli/README.md) for all commands and examples.
 
-## What this repository owns
+## Ingestion
 
-`knowledge-base` defines the generic repository format and common operations: validation, filesystem CRUD, resource reads, entity search and queries, relationship inspection, statement application, and reference registration.
+Ingestion turns a webpage into reviewable material for the knowledge base. First, retrieve the page into a bundle. Then register or reuse its source reference. A person or AI agent creates an inventory of the proposed entities and statements, and the CLI validates that inventory against the current knowledge base. The inventory is a temporary review artifact; it does not change production data.
 
-The sibling `knowledge_base_public_transport` workspace supplies public-transport rules and reports through `knowledge-base-public-transport`. The sibling `geo_lake_02` workspace retains web retrieval, source-specific reference acquisition, candidate-inventory validation, legacy migration, and route-element export through `geo-lake-knowledge-base`.
-
-## Temporary sibling integration
-
-During consolidation, the workspaces use local sibling-path dependencies instead of released packages. Consumers pin generic crates to `=0.3.0` and public-transport crates to `=0.1.0`:
-
-```text
-parent/
-├── geo_lake_02/
-├── knowledge_base/
-└── knowledge_base_public_transport/
-```
-
-Replace every sibling-path dependency with an immutable released dependency before publishing or distributing a consumer workspace independently.
+See the [ingestion guide](docs/ingestion.md), [`knowledge-base-ingestion-retrieval`](crates/ingestion-retrieval/README.md), and [`knowledge-base-ingestion-candidate-inventory`](crates/ingestion-candidate-inventory/README.md).
 
 ## Agent skills
 
@@ -78,6 +65,8 @@ The workspace includes models, a filesystem-backed CRUD layer, validation, and a
 
 - [`knowledge-base-models`](crates/models/README.md)
 - [`knowledge-base-crud`](crates/crud/README.md)
+- [`knowledge-base-ingestion-retrieval`](crates/ingestion-retrieval/README.md)
+- [`knowledge-base-ingestion-candidate-inventory`](crates/ingestion-candidate-inventory/README.md)
 - [`knowledge-base-validation`](crates/validation/README.md)
 - [`knowledge-base-cli`](crates/cli/README.md)
 

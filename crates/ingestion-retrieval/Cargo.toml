@@ -1,0 +1,28 @@
+[package]
+name = "knowledge-base-ingestion-retrieval"
+description = "Web retrieval bundles and reference registration for knowledge-base ingestion"
+readme = "README.md"
+keywords = ["knowledge-base", "ingestion", "web", "retrieval"]
+categories = ["web-programming::http-client", "data-structures"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+ammonia.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+dom_smoothie.workspace = true
+encoding_rs.workspace = true
+knowledge-base-crud.workspace = true
+reqwest = { workspace = true, features = ["blocking", "brotli", "gzip", "rustls"] }
+serde.workspace = true
+serde_yaml.workspace = true
+tempfile.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
