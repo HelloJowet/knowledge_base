@@ -3,6 +3,7 @@
 use crate::bindings::{BindingValue, ResolvedBindings};
 use crate::contracts::{BindingKey, BindingKind, BindingReference, ContractVersion, ExtensionId};
 use crate::error::FrameworkError;
+use crate::ontology::{OntologyContractDiagnostic, verify_ontology_contracts};
 use crate::registry::{ActiveExtensions, ExtensionRegistry};
 use knowledge_base_models::{EntityTypeId, PropertyId};
 use knowledge_base_snapshot::{Error as SnapshotError, RepositorySnapshot};
@@ -104,6 +105,7 @@ pub enum ManifestError {
     Read { path: PathBuf, source: io::Error },
     Parse { path: PathBuf, source: serde_yaml::Error },
     Diagnostics { path: PathBuf, diagnostics: Vec<ManifestDiagnostic> },
+    OntologyContracts { path: PathBuf, diagnostics: Vec<OntologyContractDiagnostic> },
     Framework(FrameworkError),
     Snapshot(SnapshotError),
 }
@@ -116,6 +118,12 @@ impl fmt::Display for ManifestError {
             Self::Diagnostics { path, diagnostics } => write!(
                 formatter,
                 "invalid extension manifest {}: {}",
+                path.display(),
+                diagnostics.iter().map(ToString::to_string).collect::<Vec<_>>().join("; ")
+            ),
+            Self::OntologyContracts { path, diagnostics } => write!(
+                formatter,
+                "invalid extension ontology contracts for {}: {}",
                 path.display(),
                 diagnostics.iter().map(ToString::to_string).collect::<Vec<_>>().join("; ")
             ),
@@ -132,7 +140,7 @@ impl std::error::Error for ManifestError {
             Self::Parse { source, .. } => Some(source),
             Self::Framework(source) => Some(source),
             Self::Snapshot(source) => Some(source),
-            Self::Diagnostics { .. } => None,
+            Self::Diagnostics { .. } | Self::OntologyContracts { .. } => None,
         }
     }
 }
@@ -267,6 +275,13 @@ impl ExtensionManifest {
         }
         if !diagnostics.is_empty() {
             return Err(ManifestError::Diagnostics {
+                path: Self::path(root),
+                diagnostics,
+            });
+        }
+        let diagnostics = verify_ontology_contracts(&snapshot, &active, &bindings);
+        if !diagnostics.is_empty() {
+            return Err(ManifestError::OntologyContracts {
                 path: Self::path(root),
                 diagnostics,
             });

@@ -10,4 +10,5 @@ pub mod bindings;
 pub mod contracts;
 pub mod error;
 pub mod manifest;
+pub mod ontology;
 pub mod registry;
