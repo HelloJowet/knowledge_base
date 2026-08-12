@@ -25,6 +25,7 @@ fn copied_fixture() -> tempfile::TempDir {
         }
     }
     fs::copy(fixture().join("id_allocation.yaml"), destination.path().join("id_allocation.yaml")).expect("copy allocation");
+    fs::copy(fixture().join("extensions.yaml"), destination.path().join("extensions.yaml")).expect("copy extension manifest");
     destination
 }
 
@@ -59,7 +60,7 @@ fn read_commands_print_files_exactly_as_stored() {
 }
 
 #[test]
-fn read_preserves_a_missing_trailing_newline_without_validating_the_repository() {
+fn read_fails_closed_when_the_extension_manifest_is_missing() {
     let root = tempfile::tempdir().expect("temporary knowledge base");
     fs::create_dir(root.path().join("entities")).expect("create entity directory");
     fs::write(root.path().join("entities/Q1.yaml"), b"id: Q1").expect("write entity");
@@ -70,8 +71,9 @@ fn read_preserves_a_missing_trailing_newline_without_validating_the_repository()
         .output()
         .expect("run entity read");
 
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    assert_eq!(output.stdout, b"id: Q1");
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("extensions.yaml"));
 }
 
 #[test]
@@ -251,6 +253,64 @@ fn help_and_version_do_not_require_configuration() {
 
         assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     }
+}
+
+#[test]
+fn extension_list_and_check_report_a_valid_base_only_manifest() {
+    let root = fixture();
+    let list = knowledge_base_command()
+        .args(["extension", "list"])
+        .env("KNOWLEDGE_BASE_PATH", &root)
+        .output()
+        .expect("list extensions");
+    assert!(list.status.success(), "{}", String::from_utf8_lossy(&list.stderr));
+    assert_eq!(String::from_utf8(list.stdout).unwrap(), "version: 1\nextensions: {}\n");
+    assert!(list.stderr.is_empty());
+
+    let check = knowledge_base_command()
+        .args(["extension", "check"])
+        .env("KNOWLEDGE_BASE_PATH", &root)
+        .output()
+        .expect("check extensions");
+    assert!(check.status.success(), "{}", String::from_utf8_lossy(&check.stderr));
+    assert_eq!(String::from_utf8(check.stdout).unwrap(), "version: 1\nstatus: valid\n");
+    assert!(check.stderr.is_empty());
+}
+
+#[test]
+fn extension_list_reports_unavailable_extensions_and_repository_commands_fail_closed() {
+    let root = copied_fixture();
+    fs::write(root.path().join("extensions.yaml"), "version: 1\nextensions:\n  unavailable:\n    contract: 1\n").expect("write invalid extension manifest");
+
+    let list = knowledge_base_command()
+        .args(["extension", "list"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("list extensions");
+    assert!(!list.status.success());
+    assert_eq!(
+        String::from_utf8(list.stdout).unwrap(),
+        "version: 1\nextensions:\n  unavailable:\n    declared_contract: 1\n    available_contract: null\n    active: false\n    incompatible: true\n"
+    );
+    assert!(String::from_utf8_lossy(&list.stderr).contains("not compiled"));
+
+    let check = knowledge_base_command()
+        .args(["extension", "check"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("check extensions");
+    assert!(!check.status.success());
+    assert!(check.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&check.stderr).contains("not compiled"));
+
+    let read = knowledge_base_command()
+        .args(["entity", "read", "Q1"])
+        .env("KNOWLEDGE_BASE_PATH", root.path())
+        .output()
+        .expect("read with unavailable extension");
+    assert!(!read.status.success());
+    assert!(read.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&read.stderr).contains("not compiled"));
 }
 
 #[test]

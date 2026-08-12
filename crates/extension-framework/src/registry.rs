@@ -47,6 +47,11 @@ impl ExtensionRegistry {
         self.extensions.get(id).map(|extension| extension.metadata())
     }
 
+    /// Returns every compiled extension in canonical identifier order.
+    pub fn extensions(&self) -> impl Iterator<Item = &dyn KnowledgeBaseExtension> {
+        self.extensions.values().map(AsRef::as_ref)
+    }
+
     fn validate_dependencies(&self, metadata: &ExtensionMetadata) -> Result<(), FrameworkError> {
         for dependency in &metadata.dependencies {
             let available = self.extensions.get(&dependency.id).ok_or_else(|| FrameworkError::MissingDependency {

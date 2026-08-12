@@ -1036,6 +1036,7 @@ dependencies = [
  "chrono",
  "clap",
  "knowledge-base-crud",
+ "knowledge-base-extension-framework",
  "knowledge-base-ingestion-candidate-inventory",
  "knowledge-base-ingestion-retrieval",
  "knowledge-base-models",

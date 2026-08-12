@@ -1,11 +1,10 @@
-use knowledge_base_validation::validate_repository;
-use std::path::Path;
+use knowledge_base_crud::KnowledgeBaseRepository;
 use std::process::ExitCode;
 
-pub fn execute(root: &Path) -> ExitCode {
-    let diagnostics = validate_repository(root);
+pub fn execute(repository: &KnowledgeBaseRepository) -> ExitCode {
+    let diagnostics = repository.validate();
     if diagnostics.is_empty() {
-        println!("valid knowledge base: {}", root.display());
+        println!("valid knowledge base: {}", repository.root().display());
         ExitCode::SUCCESS
     } else {
         for diagnostic in diagnostics {

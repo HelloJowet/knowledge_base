@@ -2,7 +2,6 @@ mod candidate_inventory;
 mod retrieval;
 
 use clap::Subcommand;
-use std::path::Path;
 use std::process::ExitCode;
 
 use super::CommandError;
@@ -28,9 +27,9 @@ pub fn requires_knowledge_base(command: &Command) -> bool {
     }
 }
 
-pub fn execute(command: Command, root: Option<&Path>) -> Result<ExitCode, CommandError> {
+pub fn execute(command: Command, repository: Option<&knowledge_base_crud::KnowledgeBaseRepository>) -> Result<ExitCode, CommandError> {
     match command {
-        Command::CandidateInventory { command } => candidate_inventory::execute(command, root.expect("candidate inventory command requires a knowledge base")),
-        Command::Retrieval { command } => retrieval::execute(command, root),
+        Command::CandidateInventory { command } => candidate_inventory::execute(command, repository.expect("candidate inventory command requires a knowledge base").root()),
+        Command::Retrieval { command } => retrieval::execute(command, repository),
     }
 }
