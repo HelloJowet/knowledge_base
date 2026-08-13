@@ -22,10 +22,11 @@ A file-based knowledge base is easiest to use at a small or medium scale. As it 
 │   └── R<n>.yaml
 ├── entity_context/       # optional Markdown attached to entities
 │   └── Q<n>.md
+├── extensions.yaml        # enabled extensions; required even when empty
 └── id_allocation.yaml    # next available identifiers
 ```
 
-See the [data model](docs/data-model.md) for the file format. The example in [`fixtures/valid/minimal`](fixtures/valid/minimal) is a small knowledge base you can copy and adapt.
+See the [data model](docs/data-model.md) for the file format. The example in [`fixtures/valid/minimal`](fixtures/valid/minimal) is a small, valid knowledge base you can copy and adapt.
 
 ## Command-line interface
 
@@ -40,6 +41,12 @@ Set `KNOWLEDGE_BASE_PATH` to the knowledge-base directory before running command
 ```sh
 export KNOWLEDGE_BASE_PATH="/absolute/path/to/knowledge-base"
 knowledge-base validate
+```
+
+When running from this checkout without installing the executable, use Cargo instead:
+
+```sh
+cargo run -p knowledge-base-cli -- validate
 ```
 
 See the [CLI documentation](docs/cli/README.md) for all commands and examples.
@@ -69,6 +76,12 @@ The workspace includes models, a filesystem-backed CRUD layer, validation, and a
 - [`knowledge-base-ingestion-candidate-inventory`](crates/ingestion-candidate-inventory/README.md)
 - [`knowledge-base-validation`](crates/validation/README.md)
 - [`knowledge-base-cli`](crates/cli/README.md)
+
+The documentation in `docs/` is the source for the references bundled with the agent skills. After changing it, regenerate the committed references with:
+
+```sh
+./scripts/generate-skill-references.sh
+```
 
 ```sh
 cargo fmt --check --all

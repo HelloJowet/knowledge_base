@@ -1,22 +1,17 @@
 ---
 name: knowledge-base-data-model
-description: Create, edit, review, and explain YAML and Markdown files in a file-based knowledge base. Use when working with entities, entity types, properties, statements, references, identifiers, typed values, source citations, or entity context. Use the CLI skill instead when the task is only querying, reading, validating, or adding statements to existing entities.
+description: Create, edit, review, and explain YAML and Markdown files in a file-based knowledge base. Use when working directly with entities, entity types, properties, statements, references, identifiers, typed values, source citations, images, or entity context. Prefer the CLI skill for supported reads, queries, validation, ingestion, reference registration, and statement application.
 ---
 
 # Work with Knowledge Base Data
 
-A knowledge base represents subjects as entities and describes them through structured, sourced statements. Read [references/schema.md](references/schema.md) for an overview of the model, exact file shapes, and validation rules before changing data.
+Read [the canonical data-model reference](references/docs/data-model.md) before creating or changing knowledge-base files.
 
 ## Workflow
 
-1. **Understand the change.** Identify the entity, classification, statement, or reference the user wants to add or update. If the task only adds statements to existing entities, prefer `$knowledge-base-cli` and its preview-first workflow when available.
-2. **Inspect related files.** Find the knowledge-base root, read the target and its related types, properties, entities, and references, and check whether the concept already exists.
-3. **Make the smallest valid edit.** Follow the examples and field names in the schema reference exactly. Add source records before citing them, preserve the file's existing style, and avoid unrelated cleanup.
-4. **Allocate new IDs carefully.** For a new entity, property, reference, or entity type, use and increment the matching counter in `id_allocation.yaml`. For a statement, use the next available `S<n>` within its entity.
-5. **Validate the result.** Re-read the changed files and check their related resources. If `knowledge-base` is installed, run:
-
-```sh
-KNOWLEDGE_BASE_PATH=/absolute/path knowledge-base validate
-```
-
-Fix diagnostics introduced by the change and rerun validation. Do not silently fix unrelated problems. If the executable is unavailable, perform a careful schema review and tell the user that full validation is still outstanding; do not install it.
+1. Identify the requested resource or fact and locate the knowledge-base root.
+2. Inspect the target and its related entity types, properties, entities, references, context, and allocation state. Check whether the concept already exists.
+3. Prefer `$knowledge-base-cli` when the CLI supports the complete operation, especially for reference registration and adding statements to existing entities.
+4. Otherwise, make the smallest valid direct edit. Preserve existing style and unrelated content, and add supporting sources before citing them.
+5. Allocate repository-wide and statement identifiers according to the data-model reference without reusing gaps or moving counters backward.
+6. Re-read the changed resources and validate the complete knowledge base with the CLI when it is available. Fix only diagnostics introduced by the change; if validation cannot run, perform a careful schema review and report that validation remains outstanding.
